@@ -33,6 +33,6 @@ export default {
         "postBuild": "./scripts/postBuild.ts"
     },
     "release": {
-        "bucketUrl": "https://colab-releases.blackboard.sh/"
+        "baseUrl": "https://colab-releases.blackboard.sh/"
     }
 }
