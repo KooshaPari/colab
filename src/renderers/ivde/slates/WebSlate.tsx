@@ -205,6 +205,7 @@ export const WebSlate = ({
   const partition = `persist:sites:${state.workspace.id}:${renderer()}`;
   // YYY - any was Electron.WebviewTag
   let webviewRef: any | undefined;
+  const [isWebviewReady, setIsWebviewReady] = createSignal(false);
 
   const onClickBack = () => {
     webviewRef?.goBack();
@@ -374,35 +375,18 @@ console.log('Preload script loaded for:', window.location.href);
     }
   });
 
-  // createEffect(() => {
-  //   // Note: Sometimes a tab becomes the current tab in its pane even when that pane is not the active pane
-  //   // if (currentPane.tabIds.includes(tabId)) {
-  //   // make webview tabs a little more responsive when showing/hiding while switching tabs
-  //   console.log('toggle hidden id:', webviewRef, webviewRef?.webviewId)
-    
-  //   // if (!webviewRef?.webviewId) {
-  //   //   return;
-  //   // }
-  //   if (isTabActive()) {    
-  //     console.log('solidjs: setting hidden (false): ', webviewRef?.webviewId) 
-  //     // if (webviewRef?.webviewId) {       
-  //     webviewRef?.toggleHidden(false);
-  //     // webviewRef?.toggleTransparent(false);
-  //     // webviewRef?.togglePassthrough(false);
-  //     webviewRef?.syncDimensions(true);
-  //     // }
-  //   } else {
-  //     // if (webviewRef?.webviewId) {
-  //     console.log('solidjs: setting hidden (true): ', webviewRef?.webviewId)        
-  //     webviewRef?.toggleHidden(true);
-  //     // webviewRef?.toggleTransparent(true);
-  //     // webviewRef?.togglePassthrough(true);
-  //     requestAnimationFrame(() => {
-  //     webviewRef?.syncDimensions(true);
-  //     })
-  //     // }
-  //   }
-  // });
+  createEffect(() => {
+    if (!isWebviewReady()) return;
+
+    if (isTabActive()) {
+      webviewRef?.syncDimensions(true);
+      webviewRef?.toggleHidden(false);
+      webviewRef?.togglePassthrough(false);
+    } else {
+      webviewRef?.toggleHidden(true);
+      webviewRef?.togglePassthrough(true);
+    }
+  });
 
   const isTabActive = () => {
     const _tab = tab();
@@ -1129,19 +1113,21 @@ console.log('Preload script loaded for:', window.location.href);
           src={initialUrl}
           preload={preloadScript()}
         ref={(el: any) => {
-          console.log('setting webviewRef', el, el.webviewId)
-          // console.log("electrobun-webview ref", el);
-          // YYY - el was type Electron.WebviewTag
-          webviewRef = el; // as Electron.WebviewTag;
-          
-          // Log what methods and properties are available
-          console.log("webviewRef created with ID:", webviewRef?.webviewId);
-          console.log("webviewRef object:", webviewRef);
-          
+          webviewRef = el;
+
           if (!webviewRef) {
-            console.error("webviewRef is null!");
             return;
           }
+
+          // Watch for webviewId to be assigned (initWebview sets the id attribute).
+          // Once ready, signal so the createEffect can toggle hidden/passthrough.
+          const observer = new MutationObserver(() => {
+            if (el.webviewId != null) {
+              observer.disconnect();
+              setIsWebviewReady(true);
+            }
+          });
+          observer.observe(el, { attributes: true, attributeFilter: ['id'] });
 
           webviewRef.addMaskSelector(".webview-overlay");
 
