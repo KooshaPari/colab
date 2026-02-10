@@ -1783,12 +1783,18 @@ const Pane = ({
 						"flex-grow": 1,
 					}}
 				>
-					<slot
-						style={{
-							"pointer-events": renderDropTarget() ? "none" : "auto",
-						}}
-						name={`paneslot-${pane.currentTabId}`}
-					/>
+					<For each={pane.tabIds}>
+						{(tabId) => (
+							<div style={{
+								position: "absolute",
+								inset: "0",
+								visibility: tabId === pane.currentTabId ? "visible" : "hidden",
+								"pointer-events": tabId === pane.currentTabId && !renderDropTarget() ? "auto" : "none",
+							}}>
+								<slot name={`paneslot-${tabId}`} />
+							</div>
+						)}
+					</For>
 					<Show when={isEmptyPane()}>
 						<div
 							style={{
@@ -4093,7 +4099,7 @@ const Sidebar = () => {
 				position: "relative",
 				display: "flex",
 				"flex-direction": "row",
-				transition: isDraggingResize() ? "none" : "150ms width",
+				transition: "none",
 			}}
 		>
 			<div

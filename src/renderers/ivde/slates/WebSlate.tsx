@@ -31,6 +31,12 @@ import { join } from "../../utils/pathUtils";
 import { getNode } from "../FileWatcher";
 import { createBrowserProfileFolderName } from "../../utils/browserProfileUtils";
 
+// Give the window layout 1 second to settle (sidebar animation, pane sizing, etc.)
+// before revealing any web slates. All WebSlate instances share this signal so
+// tabs opened after startup are not delayed.
+const [windowStartupSettled, setWindowStartupSettled] = createSignal(false);
+setTimeout(() => setWindowStartupSettled(true), 1000);
+
 // Not needed anymore - using regex pattern instead
 // const hasValidProtocol = (url: string) => {
 //   return (
@@ -52,7 +58,7 @@ const colabPreloadScript = `
 
   // Set a default background color for pages that don't specify one
   // (e.g., raw JS/text files served without HTML)
-  document.documentElement.style.backgroundColor = '#fff';
+  document.documentElement.style.backgroundColor = '#1e1e1e';
 
   // Forward certain keyboard shortcuts to the host so they work
   // even when the webview OOPIF has focus
@@ -206,6 +212,13 @@ export const WebSlate = ({
   // YYY - any was Electron.WebviewTag
   let webviewRef: any | undefined;
   const [isWebviewReady, setIsWebviewReady] = createSignal(false);
+
+  // Keep webview off-screen briefly so the native OOPIF doesn't flash
+  // white at the wrong position during creation. The module-level
+  // windowStartupSettled (1s) covers the startup case; this just needs
+  // to be long enough for the native view to initialize off-screen.
+  const [offScreen, setOffScreen] = createSignal(true);
+  setTimeout(() => setOffScreen(false), 300);
 
   const onClickBack = () => {
     webviewRef?.goBack();
@@ -379,11 +392,17 @@ console.log('Preload script loaded for:', window.location.href);
     if (!isWebviewReady()) return;
 
     if (isTabActive()) {
+      // During startup, keep everything transparent until the window layout settles
+      // AND the webview has moved on-screen (offScreen becomes false after 1s).
+      if (!windowStartupSettled()) return;
+      if (offScreen()) return;
+      // Tabs are always slotted now (visibility:hidden keeps them in layout),
+      // so syncDimensions always returns correct pane dimensions.
       webviewRef?.syncDimensions(true);
-      webviewRef?.toggleHidden(false);
+      webviewRef?.toggleTransparent(false);
       webviewRef?.togglePassthrough(false);
     } else {
-      webviewRef?.toggleHidden(true);
+      webviewRef?.toggleTransparent(true);
       webviewRef?.togglePassthrough(true);
     }
   });
@@ -1101,13 +1120,13 @@ console.log('Preload script loaded for:', window.location.href);
           style={{
             width: `calc(100% - 4px)`,
             height: "calc(100% - 4px)",
-            // margin: 10,
             background: "#1e1e1e",
-            // "flex-grow": 1,
             "min-height": "0px",
             "background-size": "fit",
-            // opacity: isResizingPane() ? 1 : 1,
-            // "margin-right": isResizingPane() ? "20px" : "0px",
+            // Move native OOPIF off-screen during creation so it doesn't
+            // flash white. getBoundingClientRect() includes transforms, so
+            // the native view is positioned at -10000,-10000.
+            transform: offScreen() ? "translate(-10000px, -10000px)" : "none",
           }}
           partition={partition}
           src={initialUrl}
@@ -1120,19 +1139,21 @@ console.log('Preload script loaded for:', window.location.href);
           }
 
           // Watch for webviewId to be assigned (initWebview sets the id attribute).
-          // Once ready, signal so the createEffect can toggle hidden/passthrough.
+          // Once ready, make transparent+passthrough so the OOPIF is invisible
+          // until the active/inactive effect reveals it. No hidden toggling —
+          // that's aggressive and can cause GPU crashes on startup.
           const observer = new MutationObserver(() => {
             if (el.webviewId != null) {
               observer.disconnect();
+              el.toggleTransparent(true);
+              el.togglePassthrough(true);
+              requestAnimationFrame(() => {
+                el.syncDimensions(true);
+              });
               setIsWebviewReady(true);
             }
           });
           observer.observe(el, { attributes: true, attributeFilter: ['id'] });
-
-          webviewRef.addMaskSelector(".webview-overlay");
-
-          // Start load timeout for initial URL
-          startLoadTimeout(initialUrl);
 
           webviewRef.on("dom-ready", () => {
             console.log("dom-ready event fired for webview:", webviewRef.webviewId);
