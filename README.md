@@ -11,6 +11,10 @@
 
 A hybrid web browser + local code editor for deep work.
 
+## Demo
+
+[![Co(lab) Demo](https://img.youtube.com/vi/WWTCqGmE86w/maxresdefault.jpg)](https://www.youtube.com/watch?v=WWTCqGmE86w)
+
 **Co(lab)** combines a powerful code editor with an integrated browser. At Blackboard Technologies we think about startups night and day. Co(lab) is our flagship product, built with [Electrobun](https://github.com/blackboardsh/electrobun), and we hope to make it the ultimate startup building environment.
 
 ## Features
