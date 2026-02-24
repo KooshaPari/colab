@@ -130,6 +130,53 @@ export const TopBar = () => {
 
       <Update />
 
+      {/* Electrobun bunny */}
+      <div
+        style="position: relative; display: flex; align-items: center; margin-right: 4px; -webkit-user-select: none;"
+        onMouseEnter={(e) => {
+          const tip = e.currentTarget.querySelector("[data-bunny-tip]") as HTMLElement;
+          const bunnyImg = e.currentTarget.querySelector("[data-bunny-btn]") as HTMLElement;
+          if (tip) { tip.style.opacity = "1"; tip.style.transform = "translateX(0)"; tip.style.pointerEvents = "auto"; }
+          if (bunnyImg) bunnyImg.style.filter = "drop-shadow(2px 0 0 #000) drop-shadow(-2px 0 0 #000) drop-shadow(0 2px 0 #000) drop-shadow(0 -2px 0 #000)";
+        }}
+        onMouseLeave={(e) => {
+          const tip = e.currentTarget.querySelector("[data-bunny-tip]") as HTMLElement;
+          const bunnyImg = e.currentTarget.querySelector("[data-bunny-btn]") as HTMLElement;
+          if (tip) { tip.style.opacity = "0"; tip.style.transform = "translateX(8px)"; tip.style.pointerEvents = "none"; }
+          if (bunnyImg) bunnyImg.style.filter = "none";
+        }}
+      >
+        <div
+          data-bunny-tip
+          style="position: absolute; right: 100%; top: 50%; transform: translateX(8px); margin-right: 6px; white-space: nowrap; background: #111; color: #c0c0c0; font-size: 12px; padding: 4px 10px; border-radius: 4px; border: 1px solid #333; z-index: 9999; pointer-events: none; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease; translate: 0 -50%;"
+        >Co(lab) is built with Electrobun</div>
+        <div
+          data-bunny-btn
+          style={{
+            cursor: "pointer",
+            display: "flex",
+            "align-items": "center",
+            "justify-content": "center",
+            width: "28px",
+            height: "28px",
+            "border-radius": "4px",
+            transition: "filter 0.2s ease",
+            filter: "none",
+            "flex-shrink": "0",
+          }}
+          onClick={(e) => {
+            electrobun.rpc?.send.openBunnyWindow({ screenX: e.screenX, screenY: e.screenY });
+          }}
+        >
+          <img
+            src="views://bunny/assets/bunny.png"
+            alt="Electrobun Bunny"
+            style={{ width: "22px", height: "22px" }}
+            draggable={false}
+          />
+        </div>
+      </div>
+
       {/* Colab Cloud button */}
       <div
         style="font-size: 13px; margin: 8px 4px; cursor: pointer; display: flex; align-items: center; gap: 4px; background: #2d4a3e; border-radius: 4px; padding: 2px 8px;"

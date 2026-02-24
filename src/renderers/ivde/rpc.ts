@@ -934,6 +934,10 @@ export type WorkspaceRPC = {
         offset?: { x: number; y: number };
       } | void;
       closeWindow: void;
+      openBunnyWindow: {
+        screenX: number;
+        screenY: number;
+      };
       createWorkspace: void;
       updateWorkspace: {
         [key: string]: any;

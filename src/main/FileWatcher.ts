@@ -98,7 +98,15 @@ export const watchProjectDirectories = () => {
             return;
           }
 
-          const stat = exists ? statSync(absolutePath) : null;
+          let stat = null;
+          if (exists) {
+            try {
+              stat = statSync(absolutePath);
+            } catch {
+              // File may have been deleted between the watch event and statSync
+              return;
+            }
+          }
 
           broadcastToAllWindowsInWorkspace(workspaceId, "fileWatchEvent", {
             absolutePath,

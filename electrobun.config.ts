@@ -13,13 +13,18 @@ export default {
             "external": []
         },
         "views": {
-           
+            bunny: {
+                entrypoint: "src/renderers/bunny/index.ts",
+            },
         },
         "copy": {
             "src/renderers/ivde/index.html": "views/ivde/index.html",
             "assets/custom.editor.worker.js": "views/ivde/custom.editor.worker.js",
             "assets/": "views/assets/",
-            "node_modules/@xterm/xterm/css/xterm.css": "views/ivde/xterm.css"
+            "node_modules/@xterm/xterm/css/xterm.css": "views/ivde/xterm.css",
+            "src/renderers/bunny/index.html": "views/bunny/index.html",
+            "src/renderers/bunny/index.css": "views/bunny/index.css",
+            "assets/bunny.png": "views/bunny/assets/bunny.png"
         },
         "mac": {
             "codesign": true,
