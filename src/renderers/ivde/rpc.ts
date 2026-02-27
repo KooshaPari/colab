@@ -910,6 +910,18 @@ export type WorkspaceRPC = {
           description: string;
         }>;
       };
+      // Helios runtime RPC (active when HELIOS_SURFACE_EDITOR != "true")
+      heliosRequest: {
+        params: {
+          method: string;
+          payload: Record<string, unknown>;
+        };
+        response: any;
+      };
+      heliosGetState: {
+        params: void;
+        response: any;
+      };
     };
     messages: {
       removeProjectDirectoryWatcher: {
@@ -1093,6 +1105,14 @@ export type WorkspaceRPC = {
       // Remove a file from the open files list
       removeOpenFile: {
         filePath: string;
+      };
+      // Helios runtime state/event broadcasts
+      "helios:state": {
+        state: any;
+      };
+      "helios:event": {
+        event: any;
+        state: any;
       };
     };
   }>;
