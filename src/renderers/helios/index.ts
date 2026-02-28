@@ -155,7 +155,11 @@ function addLog(label: string, ok: boolean) {
 
 // ── Toast Notifications ────────────────────────────────
 
-function showToast(message: string, type: "success" | "error" | "warning" = "success", duration = 4000) {
+function showToast(
+  message: string,
+  type: "success" | "error" | "warning" = "success",
+  duration = 4000,
+) {
   const id = `toast-${Date.now()}-${Math.random()}`;
   const toast: Toast = { id, type, message };
 
@@ -239,7 +243,7 @@ async function doCreateLane() {
   render();
   try {
     const workspaceId = ids.workspaceId ?? `ws_${Date.now()}`;
-    const res = (await electrobun.rpc?.request['heliosRequest']({
+    const res = (await electrobun.rpc?.request["heliosRequest"]({
       method: "lane.create",
       payload: { preferred_transport: "cliproxy_harness" },
     })) as any;
@@ -264,7 +268,7 @@ async function doAttachSession() {
   busy = true;
   render();
   try {
-    const res = (await electrobun.rpc?.request['heliosRequest']({
+    const res = (await electrobun.rpc?.request["heliosRequest"]({
       method: "session.attach",
       payload: { id: `${ids.laneId}:session` },
     })) as any;
@@ -288,7 +292,7 @@ async function doSpawnTerminal() {
   busy = true;
   render();
   try {
-    const res = (await electrobun.rpc?.request['heliosRequest']({
+    const res = (await electrobun.rpc?.request["heliosRequest"]({
       method: "terminal.spawn",
       payload: {
         id: `${ids.sessionId}:terminal`,
@@ -314,7 +318,7 @@ async function doSpawnTerminal() {
 async function doFullLifecycle() {
   const confirmed = await confirm(
     "Start Full Lifecycle",
-    "This will create a lane, attach a session, and spawn a terminal. Continue?"
+    "This will create a lane, attach a session, and spawn a terminal. Continue?",
   );
   if (!confirmed) return;
 
@@ -332,7 +336,7 @@ async function doFullLifecycle() {
 
 async function doRefreshState() {
   try {
-    const state = (await electrobun.rpc?.request['heliosGetState']()) as any;
+    const state = (await electrobun.rpc?.request["heliosGetState"]()) as any;
     if (state) {
       applyState(state);
       addLog("state.refresh", true);
@@ -348,10 +352,7 @@ async function doRefreshState() {
 }
 
 async function doReconnectSession(laneId: string) {
-  const confirmed = await confirm(
-    "Reconnect to Lane",
-    `Reconnect to lane ${laneId.slice(0, 12)}?`
-  );
+  const confirmed = await confirm("Reconnect to Lane", `Reconnect to lane ${laneId.slice(0, 12)}?`);
   if (!confirmed) return;
 
   busy = true;
@@ -402,14 +403,14 @@ function ensureXterm(): Terminal {
   // Forward input to main process
   xterm.onData((data) => {
     if (ids.terminalId) {
-      electrobun.rpc?.request['heliosTerminalInput']({ terminalId: ids.terminalId, data });
+      electrobun.rpc?.request["heliosTerminalInput"]({ terminalId: ids.terminalId, data });
     }
   });
 
   // Forward resize
   xterm.onResize(({ cols, rows }) => {
     if (ids.terminalId) {
-      electrobun.rpc?.request['heliosTerminalResize']({ terminalId: ids.terminalId, cols, rows });
+      electrobun.rpc?.request["heliosTerminalResize"]({ terminalId: ids.terminalId, cols, rows });
     }
   });
 
@@ -458,7 +459,7 @@ let auditEntries: AuditEntry[] = [];
 
 async function loadPersistedData() {
   try {
-    const lanes = (await electrobun.rpc?.request['heliosGetLanes']()) as any;
+    const lanes = (await electrobun.rpc?.request["heliosGetLanes"]()) as any;
     if (Array.isArray(lanes)) {
       persistedLanes = lanes;
       availableLanes = lanes.map((l: any) => ({
@@ -468,25 +469,33 @@ async function loadPersistedData() {
         lastUpdated: l.lastUpdated,
       }));
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   try {
-    const audit = (await electrobun.rpc?.request['heliosGetAudit']()) as any;
+    const audit = (await electrobun.rpc?.request["heliosGetAudit"]()) as any;
     if (Array.isArray(audit)) auditEntries = audit.slice(0, 20);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 async function loadMetrics() {
   try {
-    const report = (await electrobun.rpc?.request['heliosGetMetrics']()) as any;
+    const report = (await electrobun.rpc?.request["heliosGetMetrics"]()) as any;
     if (report?.summaries) metricsSummaries = report.summaries;
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 async function loadRendererCaps() {
   try {
-    const res = (await electrobun.rpc?.request['heliosRendererCapabilities']()) as any;
+    const res = (await electrobun.rpc?.request["heliosRendererCapabilities"]()) as any;
     if (res?.result) rendererCaps = res.result as RendererCapabilities;
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 async function doRendererSwitch(engine: string) {
@@ -494,7 +503,9 @@ async function doRendererSwitch(engine: string) {
   busy = true;
   render();
   try {
-    const res = (await electrobun.rpc?.request['heliosRendererSwitch']({ targetEngine: engine })) as any;
+    const res = (await electrobun.rpc?.request["heliosRendererSwitch"]({
+      targetEngine: engine,
+    })) as any;
     addLog(`renderer.switch → ${engine}`, res?.status === "ok");
     await loadRendererCaps();
     if (res?.status === "ok") {
@@ -515,7 +526,7 @@ async function doAgentRun(prompt: string) {
   busy = true;
   render();
   try {
-    const res = (await electrobun.rpc?.request['heliosRequest']({
+    const res = (await electrobun.rpc?.request["heliosRequest"]({
       method: "agent.run",
       payload: { prompt },
     })) as any;
@@ -577,7 +588,7 @@ function btn(
   label: string,
   onClick: () => void,
   disabled = false,
-  variant: "primary" | "secondary" | "danger" = "secondary"
+  variant: "primary" | "secondary" | "danger" = "secondary",
 ): HTMLElement {
   const b = document.createElement("button");
   b.textContent = label;
@@ -628,8 +639,8 @@ function render() {
     el(
       "span",
       "status-text",
-      `${runtimeState.lane.state} | ${runtimeState.session.state} | ${runtimeState.terminal.state}`
-    )
+      `${runtimeState.lane.state} | ${runtimeState.session.state} | ${runtimeState.terminal.state}`,
+    ),
   );
 
   if (busy) {
@@ -700,8 +711,8 @@ function render() {
         el(
           "div",
           "onboarding-desc",
-          "Helios is a terminal-first runtime manager that helps you create and manage computational lanes, sessions, and terminals."
-        )
+          "Helios is a terminal-first runtime manager that helps you create and manage computational lanes, sessions, and terminals.",
+        ),
       );
       const ctaBtn = btn("Create Your First Lane", doCreateLane, busy, "primary");
       ctaBtn.className = "btn primary onboarding-btn";
@@ -709,7 +720,7 @@ function render() {
       center.appendChild(onboarding);
     } else {
       center.appendChild(
-        el("div", "empty-state", "Run Spawn Terminal in the Lifecycle section to open a terminal")
+        el("div", "empty-state", "Run Spawn Terminal in the Lifecycle section to open a terminal"),
       );
     }
   } else if (activeTab === "session") {
@@ -768,7 +779,9 @@ function render() {
     center.appendChild(el("div", "section-title", "Agent Delegation"));
     const statusCard = el("div", "card");
     statusCard.appendChild(el("div", "card-label", "A2A Boundary"));
-    statusCard.appendChild(el("div", "card-value", "not configured — connect an A2A or ACP endpoint in settings"));
+    statusCard.appendChild(
+      el("div", "card-value", "not configured — connect an A2A or ACP endpoint in settings"),
+    );
     center.appendChild(statusCard);
 
     center.appendChild(el("div", "section-title mt", "Available Methods"));
@@ -798,7 +811,7 @@ function render() {
     const chatLog = el("div", "chat-log");
     if (chatMessages.length === 0) {
       chatLog.appendChild(
-        el("div", "empty-state", "Send a message to interact with the agent boundary")
+        el("div", "empty-state", "Send a message to interact with the agent boundary"),
       );
     } else {
       for (const msg of chatMessages) {
@@ -831,7 +844,7 @@ function render() {
         }
       },
       busy,
-      "primary"
+      "primary",
     );
     sendBtn.className = "btn primary chat-send-btn";
     inputRow.appendChild(sendBtn);
@@ -864,12 +877,14 @@ function render() {
           btn(
             `${engine}${isActive ? " (active)" : ""}`,
             () => doRendererSwitch(engine),
-            busy || isActive
-          )
+            busy || isActive,
+          ),
         );
       }
     } else {
-      center.appendChild(el("div", "empty-state mt", "Run lifecycle to load renderer capabilities"));
+      center.appendChild(
+        el("div", "empty-state mt", "Run lifecycle to load renderer capabilities"),
+      );
     }
 
     center.appendChild(el("div", "section-title mt", "Multiplexer Adapters"));
@@ -895,32 +910,16 @@ function render() {
 
         const stats = el("div", "metric-stats");
         stats.appendChild(
-          el(
-            "div",
-            "metric-stat",
-            `Min: <span class="metric-stat-value">${m.min}${m.unit}</span>`
-          )
+          el("div", "metric-stat", `Min: <span class="metric-stat-value">${m.min}${m.unit}</span>`),
         );
         stats.appendChild(
-          el(
-            "div",
-            "metric-stat",
-            `Max: <span class="metric-stat-value">${m.max}${m.unit}</span>`
-          )
+          el("div", "metric-stat", `Max: <span class="metric-stat-value">${m.max}${m.unit}</span>`),
         );
         stats.appendChild(
-          el(
-            "div",
-            "metric-stat",
-            `P95: <span class="metric-stat-value">${m.p95}${m.unit}</span>`
-          )
+          el("div", "metric-stat", `P95: <span class="metric-stat-value">${m.p95}${m.unit}</span>`),
         );
         stats.appendChild(
-          el(
-            "div",
-            "metric-stat",
-            `Count: <span class="metric-stat-value">${m.count}x</span>`
-          )
+          el("div", "metric-stat", `Count: <span class="metric-stat-value">${m.count}x</span>`),
         );
 
         card.appendChild(stats);
@@ -1007,7 +1006,9 @@ function render() {
   for (const toast of toasts) {
     const toastEl = document.createElement("div");
     toastEl.className = `toast ${toast.type}`;
-    toastEl.appendChild(el("span", "toast-icon", toast.type === "success" ? "✓" : toast.type === "error" ? "✕" : "⚠"));
+    toastEl.appendChild(
+      el("span", "toast-icon", toast.type === "success" ? "✓" : toast.type === "error" ? "✕" : "⚠"),
+    );
     toastEl.appendChild(el("span", "toast-message", toast.message));
     document.body.appendChild(toastEl);
   }

@@ -61,7 +61,9 @@ describe("createToolDispatch", () => {
       expect(response.status).toBe("error");
       expect(response.error?.message).toContain("upterm CLI is not installed");
       expect(response.error?.message).toContain("brew install upterm");
-      expect(response.error?.message).toContain("curl -sL https://github.com/owenthereal/upterm/raw/main/scripts/install.sh");
+      expect(response.error?.message).toContain(
+        "curl -sL https://github.com/owenthereal/upterm/raw/main/scripts/install.sh",
+      );
     });
 
     it("has correct response envelope structure", async () => {

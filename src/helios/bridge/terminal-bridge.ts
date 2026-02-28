@@ -9,12 +9,20 @@ import { terminalManager } from "../../main/utils/terminalManager";
 import { broadcastToAllWindowsInWorkspace } from "../../main/workspaceWindows";
 
 export class HeliosTerminalBridge {
-  private readonly heliosTerminals = new Map<string, { realTerminalId: string; workspaceId: string; heliosWindowKey: string }>();
+  private readonly heliosTerminals = new Map<
+    string,
+    { realTerminalId: string; workspaceId: string; heliosWindowKey: string }
+  >();
 
   /**
    * Spawn a real pty terminal and wire output to the helios renderer.
    */
-  spawnTerminal(heliosTerminalId: string, workspaceId: string, windowId: string, cwd?: string): string {
+  spawnTerminal(
+    heliosTerminalId: string,
+    workspaceId: string,
+    windowId: string,
+    cwd?: string,
+  ): string {
     // Use a helios-specific windowId so terminalManager.getMessageHandler
     // resolves to our handler (it looks up terminalToWindow[id] → windowId
     // → windowHandlers[windowId]). Using the real windowId would clobber
@@ -29,7 +37,11 @@ export class HeliosTerminalBridge {
       heliosWindowKey,
     );
 
-    this.heliosTerminals.set(heliosTerminalId, { realTerminalId: realId, workspaceId, heliosWindowKey });
+    this.heliosTerminals.set(heliosTerminalId, {
+      realTerminalId: realId,
+      workspaceId,
+      heliosWindowKey,
+    });
 
     // Register handler under the same key that terminalManager will look up
     terminalManager.setWindowMessageHandler(heliosWindowKey, (message: any) => {
@@ -48,7 +60,9 @@ export class HeliosTerminalBridge {
       }
     });
 
-    console.log(`[helios] terminal bridge: spawned pty ${realId} for helios terminal ${heliosTerminalId}`);
+    console.log(
+      `[helios] terminal bridge: spawned pty ${realId} for helios terminal ${heliosTerminalId}`,
+    );
     return realId;
   }
 

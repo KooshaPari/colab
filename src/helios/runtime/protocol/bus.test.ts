@@ -19,7 +19,7 @@ describe("InMemoryLocalBus", () => {
       payload,
       workspace_id: "ws-test",
       session_id: "sess-test",
-      terminal_id: "term-test"
+      terminal_id: "term-test",
     };
   }
 
@@ -31,7 +31,7 @@ describe("InMemoryLocalBus", () => {
       ts: new Date().toISOString(),
       topic,
       payload,
-      workspace_id: "ws-test"
+      workspace_id: "ws-test",
     };
   }
 
@@ -303,7 +303,7 @@ describe("InMemoryLocalBus", () => {
     it("should reject with force_error flag", async () => {
       const command = createCommand("renderer.switch", {
         target_engine: "rio",
-        force_error: true
+        force_error: true,
       });
       const response = await bus.request(command);
 
@@ -359,7 +359,7 @@ describe("InMemoryLocalBus", () => {
     it("should resolve to native_openai transport when simulate_degrade is true", async () => {
       const command = createCommand("lane.create", {
         preferred_transport: "cliproxy_harness",
-        simulate_degrade: true
+        simulate_degrade: true,
       });
       const response = await bus.request(command);
 
@@ -373,7 +373,7 @@ describe("InMemoryLocalBus", () => {
     it("should keep preferred_transport when simulate_degrade is false", async () => {
       const command = createCommand("session.attach", {
         preferred_transport: "cliproxy_harness",
-        simulate_degrade: false
+        simulate_degrade: false,
       });
       const response = await bus.request(command);
 
@@ -419,7 +419,7 @@ describe("InMemoryLocalBus", () => {
         id: commandId,
         type: "command",
         ts: new Date().toISOString(),
-        method: "undefined.method"
+        method: "undefined.method",
       };
       const response = await bus.request(command);
 
@@ -559,11 +559,7 @@ describe("InMemoryLocalBus", () => {
       const event2 = createEvent("event2");
       const event3 = createEvent("event3");
 
-      await Promise.all([
-        bus.publish(event1),
-        bus.publish(event2),
-        bus.publish(event3)
-      ]);
+      await Promise.all([bus.publish(event1), bus.publish(event2), bus.publish(event3)]);
 
       const events = bus.getEvents();
       expect(events).toHaveLength(3);
@@ -577,7 +573,7 @@ describe("InMemoryLocalBus", () => {
       const [resp1, resp2, resp3] = await Promise.all([
         bus.request(cmd1),
         bus.request(cmd2),
-        bus.request(cmd3)
+        bus.request(cmd3),
       ]);
 
       expect(resp1.status).toBe("ok");

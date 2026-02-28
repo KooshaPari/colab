@@ -1,5 +1,10 @@
 import type { LocalBusEnvelope } from "./types";
-import { INITIAL_RUNTIME_STATE, transition, type RuntimeEvent, type RuntimeState } from "../sessions/state_machine";
+import {
+  INITIAL_RUNTIME_STATE,
+  transition,
+  type RuntimeEvent,
+  type RuntimeState,
+} from "../sessions/state_machine";
 
 export interface LocalBus {
   publish(event: LocalBusEnvelope): Promise<void>;
@@ -26,7 +31,7 @@ const METHOD_SPECS: Record<HandledMethod, MethodTransitionSpec> = {
     startedTopic: "lane.create.started",
     successTopic: "lane.created",
     failedTopic: "lane.create.failed",
-    resultKey: "lane_id"
+    resultKey: "lane_id",
   },
   "session.attach": {
     requested: "session.attach.requested",
@@ -35,7 +40,7 @@ const METHOD_SPECS: Record<HandledMethod, MethodTransitionSpec> = {
     startedTopic: "session.attach.started",
     successTopic: "session.attached",
     failedTopic: "session.attach.failed",
-    resultKey: "session_id"
+    resultKey: "session_id",
   },
   "terminal.spawn": {
     requested: "terminal.spawn.requested",
@@ -44,8 +49,8 @@ const METHOD_SPECS: Record<HandledMethod, MethodTransitionSpec> = {
     startedTopic: "terminal.spawn.started",
     successTopic: "terminal.spawned",
     failedTopic: "terminal.spawn.failed",
-    resultKey: "terminal_id"
-  }
+    resultKey: "terminal_id",
+  },
 };
 
 export class InMemoryLocalBus implements LocalBus {
@@ -65,15 +70,17 @@ export class InMemoryLocalBus implements LocalBus {
     this.state = state;
   }
 
-  getActiveLanes(): Array<{laneId: string, sessionId?: string, terminalId?: string}> {
+  getActiveLanes(): Array<{ laneId: string; sessionId?: string; terminalId?: string }> {
     // RuntimeState tracks a single lane/session/terminal state, not collections
     // Return current state info if lane is active (not "new" or "closed")
     if (this.state.lane !== "new" && this.state.lane !== "closed") {
-      return [{
-        laneId: "current",
-        sessionId: this.state.session !== "detached" ? "current" : undefined,
-        terminalId: this.state.terminal !== "idle" ? "current" : undefined
-      }];
+      return [
+        {
+          laneId: "current",
+          sessionId: this.state.session !== "detached" ? "current" : undefined,
+          terminalId: this.state.terminal !== "idle" ? "current" : undefined,
+        },
+      ];
     }
 
     return [];
@@ -103,22 +110,24 @@ export class InMemoryLocalBus implements LocalBus {
       type: "response",
       ts: new Date().toISOString(),
       status: "ok",
-      result: {}
+      result: {},
     };
   }
 
-  private async handleLifecycleCommand(command: LocalBusEnvelope, method: HandledMethod): Promise<LocalBusEnvelope> {
+  private async handleLifecycleCommand(
+    command: LocalBusEnvelope,
+    method: HandledMethod,
+  ): Promise<LocalBusEnvelope> {
     const spec = METHOD_SPECS[method];
-    const forcedError = command.payload?.['force_error'] === true;
-    const resultId = command.payload?.['id'] ?? `${spec.resultKey}_${Date.now()}`;
-    const preferredTransport = typeof command.payload?.['preferred_transport'] === "string"
-      ? command.payload['preferred_transport']
-      : "cliproxy_harness";
-    const degraded = command.payload?.['simulate_degrade'] === true;
+    const forcedError = command.payload?.["force_error"] === true;
+    const resultId = command.payload?.["id"] ?? `${spec.resultKey}_${Date.now()}`;
+    const preferredTransport =
+      typeof command.payload?.["preferred_transport"] === "string"
+        ? command.payload["preferred_transport"]
+        : "cliproxy_harness";
+    const degraded = command.payload?.["simulate_degrade"] === true;
     const resolvedTransport = degraded ? "native_openai" : preferredTransport;
-    const degradedReason = degraded
-      ? "cliproxy_harness_unhealthy"
-      : null;
+    const degradedReason = degraded ? "cliproxy_harness_unhealthy" : null;
 
     await this.emitTransitionEvent(command, spec.requested, spec.startedTopic);
 
@@ -134,8 +143,8 @@ export class InMemoryLocalBus implements LocalBus {
           code: `${method.toUpperCase().replace(".", "_")}_FAILED`,
           message: `${method} failed`,
           retryable: true,
-          details: { method }
-        }
+          details: { method },
+        },
       };
     }
 
@@ -152,9 +161,9 @@ export class InMemoryLocalBus implements LocalBus {
           preferred_transport: preferredTransport,
           resolved_transport: resolvedTransport,
           degraded_reason: degradedReason,
-          degraded_at: degraded ? new Date().toISOString() : null
-        }
-      }
+          degraded_at: degraded ? new Date().toISOString() : null,
+        },
+      },
     };
   }
 
@@ -167,14 +176,14 @@ export class InMemoryLocalBus implements LocalBus {
       result: {
         active_engine: this.rendererEngine,
         available_engines: ["ghostty", "rio"],
-        hot_swap_supported: true
-      }
+        hot_swap_supported: true,
+      },
     };
   }
 
   private async handleRendererSwitch(command: LocalBusEnvelope): Promise<LocalBusEnvelope> {
-    const nextEngine = command.payload?.['target_engine'];
-    const forcedError = command.payload?.['force_error'] === true;
+    const nextEngine = command.payload?.["target_engine"];
+    const forcedError = command.payload?.["force_error"] === true;
     const previousEngine = this.rendererEngine;
 
     await this.publish({
@@ -184,8 +193,8 @@ export class InMemoryLocalBus implements LocalBus {
       topic: "renderer.switch.started",
       payload: {
         previous_engine: previousEngine,
-        target_engine: nextEngine
-      }
+        target_engine: nextEngine,
+      },
     });
 
     if (forcedError || (nextEngine !== "ghostty" && nextEngine !== "rio")) {
@@ -197,8 +206,8 @@ export class InMemoryLocalBus implements LocalBus {
         payload: {
           previous_engine: previousEngine,
           target_engine: nextEngine,
-          reason: forcedError ? "forced_error" : "invalid_renderer_engine"
-        }
+          reason: forcedError ? "forced_error" : "invalid_renderer_engine",
+        },
       });
 
       return {
@@ -213,9 +222,9 @@ export class InMemoryLocalBus implements LocalBus {
           retryable: true,
           details: {
             previous_engine: previousEngine,
-            target_engine: nextEngine
-          }
-        }
+            target_engine: nextEngine,
+          },
+        },
       };
     }
 
@@ -227,8 +236,8 @@ export class InMemoryLocalBus implements LocalBus {
       topic: "renderer.switch.succeeded",
       payload: {
         previous_engine: previousEngine,
-        active_engine: this.rendererEngine
-      }
+        active_engine: this.rendererEngine,
+      },
     });
 
     return {
@@ -238,12 +247,16 @@ export class InMemoryLocalBus implements LocalBus {
       status: "ok",
       result: {
         active_engine: this.rendererEngine,
-        previous_engine: previousEngine
-      }
+        previous_engine: previousEngine,
+      },
     };
   }
 
-  private async emitTransitionEvent(command: LocalBusEnvelope, runtimeEvent: RuntimeEvent, topic: string): Promise<void> {
+  private async emitTransitionEvent(
+    command: LocalBusEnvelope,
+    runtimeEvent: RuntimeEvent,
+    topic: string,
+  ): Promise<void> {
     this.state = transition(this.state, runtimeEvent);
     await this.publish({
       id: `${command.id}:${runtimeEvent}`,
@@ -255,8 +268,8 @@ export class InMemoryLocalBus implements LocalBus {
       topic,
       payload: {
         runtime_event: runtimeEvent,
-        state: this.state
-      }
+        state: this.state,
+      },
     });
   }
 }

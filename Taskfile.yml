@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 tasks:
   dev:
@@ -22,14 +22,14 @@ tasks:
       - bun install && bun run setup
 
   quality:fmt:
-    desc: "Format code with Biome (mutating)"
+    desc: "Format code with oxfmt (mutating)"
     cmds:
-      - bunx biome format --write .
+      - bunx oxfmt --write .
 
   quality:lint:
-    desc: "Lint code with Biome"
+    desc: "Lint code with oxlint"
     cmds:
-      - bunx biome lint .
+      - bunx oxlint -c .oxlintrc.json .
 
   quality:test:
     desc: "Run tests"
@@ -46,13 +46,15 @@ tasks:
   quality:quick:
     desc: "Quick quality check (readonly - no mutations)"
     cmds:
-      - bunx biome check .
+      - bunx oxfmt --check .
+      - bunx oxlint -c .oxlintrc.json .
       - bunx vitest run
 
   quality:ci:
     desc: "CI quality gate (non-mutating PR gate)"
     cmds:
-      - bunx biome check .
+      - bunx oxfmt --check .
+      - bunx oxlint -c .oxlintrc.json .
       - bunx vitest run
 
   quality:pre-push:
@@ -63,7 +65,8 @@ tasks:
   quality:release-lint:
     desc: "Release lint check"
     cmds:
-      - bunx biome check .
+      - bunx oxfmt --check .
+      - bunx oxlint -c .oxlintrc.json .
       - bunx vitest run
       - echo "Release lint passed"
 

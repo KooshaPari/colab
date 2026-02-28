@@ -8,7 +8,10 @@
 
 import { type InMemoryLocalBus } from "../runtime/protocol/bus";
 import type { LocalBusEnvelope } from "../runtime/protocol/types";
-import { createBoundaryDispatcher, getBoundaryDispatchDecision } from "../runtime/protocol/boundary_adapter";
+import {
+  createBoundaryDispatcher,
+  getBoundaryDispatchDecision,
+} from "../runtime/protocol/boundary_adapter";
 import { broadcastToAllWindowsInWorkspace } from "../../main/workspaceWindows";
 import { upsertLane, writeAuditEntry } from "./persistence";
 import type { RuntimeMetrics } from "../runtime/diagnostics/metrics";
@@ -82,13 +85,13 @@ export function createBusRpcBridge(opts: BusRpcBridgeOptions): BusRpcBridge {
           type: "response",
           ts: new Date().toISOString(),
           status: "ok",
-          result: { lanes }
+          result: { lanes },
         };
       }
 
       // Handle session.reconnect
       if (method === "session.reconnect") {
-        const laneId = params['laneId'] as string;
+        const laneId = params["laneId"] as string;
         if (!laneId) {
           return {
             id: crypto.randomUUID(),
@@ -100,8 +103,8 @@ export function createBusRpcBridge(opts: BusRpcBridgeOptions): BusRpcBridge {
               code: "SESSION_RECONNECT_FAILED",
               message: "laneId is required",
               retryable: false,
-              details: { method: "session.reconnect" }
-            }
+              details: { method: "session.reconnect" },
+            },
           };
         }
 
@@ -116,7 +119,7 @@ export function createBusRpcBridge(opts: BusRpcBridgeOptions): BusRpcBridge {
           correlation_id: crypto.randomUUID(),
           meta: {
             workspace_id: workspaceId,
-            session_id: (params['session_id'] as string) ?? null,
+            session_id: (params["session_id"] as string) ?? null,
             correlation_id: crypto.randomUUID(),
             timestamp: new Date().toISOString(),
           },
@@ -136,7 +139,7 @@ export function createBusRpcBridge(opts: BusRpcBridgeOptions): BusRpcBridge {
         correlation_id: correlationId,
         meta: {
           workspace_id: workspaceId,
-          session_id: (params['session_id'] as string) ?? null,
+          session_id: (params["session_id"] as string) ?? null,
           correlation_id: correlationId,
           timestamp: new Date().toISOString(),
         },
@@ -144,9 +147,12 @@ export function createBusRpcBridge(opts: BusRpcBridgeOptions): BusRpcBridge {
 
       // Route through boundary dispatcher with metrics
       const decision = getBoundaryDispatchDecision(method);
-      const metricName = method === "lane.create" ? "lane_create_latency_ms" as const
-        : method === "session.attach" ? "session_restore_latency_ms" as const
-        : null;
+      const metricName =
+        method === "lane.create"
+          ? ("lane_create_latency_ms" as const)
+          : method === "session.attach"
+            ? ("session_restore_latency_ms" as const)
+            : null;
 
       if (metrics && metricName) {
         metrics.startTimer(metricName, envelope.meta?.correlation_id ?? method);
@@ -163,15 +169,22 @@ export function createBusRpcBridge(opts: BusRpcBridgeOptions): BusRpcBridge {
       // Persist lane state after lifecycle commands
       if (method === "lane.create" || method === "session.attach" || method === "terminal.spawn") {
         const result = response.result as Record<string, unknown> | null;
-        const laneId = (result?.['lane_id'] as string) ?? (params['lane_id'] as string) ?? (params['id'] as string)?.split(":")[0] ?? null;
+        const laneId =
+          (result?.["lane_id"] as string) ??
+          (params["lane_id"] as string) ??
+          (params["id"] as string)?.split(":")[0] ??
+          null;
         if (laneId) {
           try {
             upsertLane({
               workspaceId,
               laneId,
-              sessionId: (result?.['session_id'] as string) ?? null,
-              terminalId: (result?.['terminal_id'] as string) ?? null,
-              transport: (result?.['diagnostics'] as Record<string, unknown>)?.['resolved_transport'] as string ?? "cliproxy_harness",
+              sessionId: (result?.["session_id"] as string) ?? null,
+              terminalId: (result?.["terminal_id"] as string) ?? null,
+              transport:
+                ((result?.["diagnostics"] as Record<string, unknown>)?.[
+                  "resolved_transport"
+                ] as string) ?? "cliproxy_harness",
               state: JSON.stringify(state),
               lastUpdated: new Date().toISOString(),
             });

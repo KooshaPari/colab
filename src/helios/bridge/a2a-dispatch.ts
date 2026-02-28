@@ -20,7 +20,10 @@ function errorResponse(command: LocalBusEnvelope, code: string, message: string)
   };
 }
 
-function successResponse(command: LocalBusEnvelope, result: Record<string, unknown>): LocalBusEnvelope {
+function successResponse(
+  command: LocalBusEnvelope,
+  result: Record<string, unknown>,
+): LocalBusEnvelope {
   return {
     id: command.id,
     type: "response",

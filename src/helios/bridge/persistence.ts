@@ -26,7 +26,8 @@ export function loadSettings(): HeliosSettings {
   if (data.length > 0) {
     settingsDocId = data[0].id;
     return {
-      rendererEngine: (data[0].rendererEngine as "ghostty" | "rio") ?? DEFAULT_SETTINGS.rendererEngine,
+      rendererEngine:
+        (data[0].rendererEngine as "ghostty" | "rio") ?? DEFAULT_SETTINGS.rendererEngine,
       hotSwapPreferred: data[0].hotSwapPreferred ?? DEFAULT_SETTINGS.hotSwapPreferred,
     };
   }
@@ -76,7 +77,11 @@ export function upsertLane(lane: Omit<PersistedLane, "id">): PersistedLane {
       state: lane.state,
       lastUpdated: lane.lastUpdated,
     });
-    return { ...updated, sessionId: updated.sessionId ?? null, terminalId: updated.terminalId ?? null } as PersistedLane;
+    return {
+      ...updated,
+      sessionId: updated.sessionId ?? null,
+      terminalId: updated.terminalId ?? null,
+    } as PersistedLane;
   }
 
   const doc = db.collection("helios_lanes").insert({
@@ -88,7 +93,11 @@ export function upsertLane(lane: Omit<PersistedLane, "id">): PersistedLane {
     state: lane.state,
     lastUpdated: lane.lastUpdated,
   });
-  return { ...doc, sessionId: doc.sessionId ?? null, terminalId: doc.terminalId ?? null } as PersistedLane;
+  return {
+    ...doc,
+    sessionId: doc.sessionId ?? null,
+    terminalId: doc.terminalId ?? null,
+  } as PersistedLane;
 }
 
 export function getLanesForWorkspace(workspaceId: string): PersistedLane[] {

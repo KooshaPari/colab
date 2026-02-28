@@ -33,10 +33,7 @@ export class UptermCommandAdapter implements UptermAdapter {
 
     // Run upterm host in background and capture the session link
     // Using 'bash -c' to wrap the command so it runs in background properly
-    const result = await execCommand("bash", [
-      "-c",
-      `upterm host -- bash 2>&1 | head -1`
-    ]);
+    const result = await execCommand("bash", ["-c", `upterm host -- bash 2>&1 | head -1`]);
 
     if (result.code !== 0) {
       throw new Error(`upterm start share failed: ${result.stderr || result.stdout}`);
@@ -51,7 +48,7 @@ export class UptermCommandAdapter implements UptermAdapter {
     try {
       const pidResult = await execCommand("pgrep", ["-f", "upterm host"]);
       if (pidResult.code === 0) {
-        const pid = parseInt(pidResult.stdout.trim().split('\n')[0], 10);
+        const pid = parseInt(pidResult.stdout.trim().split("\n")[0], 10);
         if (!isNaN(pid)) {
           processMap.set(terminalId, pid);
         }

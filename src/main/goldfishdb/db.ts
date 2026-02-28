@@ -26,7 +26,7 @@ const db = new DB<typeof currentSchema>().init({
     { v: 8, schema: schema8, migrationSteps: false },
   ],
   db_folder: COLAB_GOLDFISHDB_PATH,
-  passphrase: 'colab-dev-encryption-key'
+  passphrase: "colab-dev-encryption-key",
 });
 
 export default db;
