@@ -8,6 +8,10 @@
 
 import { Electroview } from "electrobun/view";
 import type { WorkspaceRPC } from "../ivde/rpc";
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import { WebLinksAddon } from "@xterm/addon-web-links";
+// xterm.css loaded via <link> in index.html
 
 // ── State ──────────────────────────────────────────────
 
@@ -47,6 +51,15 @@ let eventLog: EventLogEntry[] = [];
 let activeTab: ActiveTab = "terminal";
 let busy = false;
 
+// xterm.js instance (persists across re-renders)
+let xterm: Terminal | null = null;
+let fitAddon: FitAddon | null = null;
+let xtermMounted = false;
+
+// Metrics cache
+type MetricSummary = { metric: string; unit: string; count: number; min: number; max: number; p50: number; p95: number; latest: number };
+let metricsSummaries: MetricSummary[] = [];
+
 const TABS: ActiveTab[] = ["terminal", "agent", "session", "chat", "project"];
 
 // ── RPC Setup ──────────────────────────────────────────
@@ -65,6 +78,11 @@ const rpc = Electroview.defineRPC<WorkspaceRPC>({
         const topic = data.event?.topic ?? data.event?.payload?.runtime_event ?? "event";
         addLog(topic, true);
         render();
+      },
+      "helios:terminal-data": (data: { terminalId: string; data: string }) => {
+        if (xterm) {
+          xterm.write(data.data);
+        }
       },
     },
   },
@@ -139,6 +157,7 @@ async function doSpawnTerminal() {
       },
     });
     ids.terminalId = res?.result?.terminal_id ?? null;
+    if (xterm) xterm.clear();
     addLog("terminal.spawn", res?.status === "ok");
   } catch (e: any) {
     addLog(`terminal.spawn error: ${e?.message ?? e}`, false);
@@ -163,9 +182,77 @@ async function doRefreshState() {
   } catch (e: any) {
     addLog(`state.refresh error: ${e?.message ?? e}`, false);
   }
-  // Also load persisted data
   await loadPersistedData();
+  await loadMetrics();
   render();
+}
+
+// ── xterm.js Setup ────────────────────────────────────
+
+function ensureXterm(): Terminal {
+  if (xterm) return xterm;
+
+  xterm = new Terminal({
+    theme: {
+      background: "#0a0a1a",
+      foreground: "#c8c8e8",
+      cursor: "#7b8cde",
+      selectionBackground: "#3a3a6a",
+      black: "#1a1a2e",
+      red: "#e05555",
+      green: "#5adb5a",
+      yellow: "#e8a838",
+      blue: "#7b8cde",
+      magenta: "#b07acc",
+      cyan: "#5ac8c8",
+      white: "#e0e0e0",
+    },
+    fontFamily: '"SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono", monospace',
+    fontSize: 13,
+    lineHeight: 1.2,
+    cursorBlink: true,
+    allowProposedApi: true,
+  });
+
+  fitAddon = new FitAddon();
+  xterm.loadAddon(fitAddon);
+  xterm.loadAddon(new WebLinksAddon());
+
+  // Forward input to main process
+  xterm.onData((data) => {
+    if (ids.terminalId) {
+      electrobun.rpc?.request.heliosTerminalInput({ terminalId: ids.terminalId, data });
+    }
+  });
+
+  // Forward resize
+  xterm.onResize(({ cols, rows }) => {
+    if (ids.terminalId) {
+      electrobun.rpc?.request.heliosTerminalResize({ terminalId: ids.terminalId, cols, rows });
+    }
+  });
+
+  return xterm;
+}
+
+function mountXterm(container: HTMLElement) {
+  const term = ensureXterm();
+  if (!xtermMounted) {
+    term.open(container);
+    xtermMounted = true;
+  }
+  requestAnimationFrame(() => {
+    fitAddon?.fit();
+  });
+}
+
+function disposeXterm() {
+  if (xterm) {
+    xterm.dispose();
+    xterm = null;
+    fitAddon = null;
+    xtermMounted = false;
+  }
 }
 
 // ── Persisted Data ─────────────────────────────────────
@@ -199,6 +286,13 @@ async function loadPersistedData() {
   } catch { /* ignore */ }
 }
 
+async function loadMetrics() {
+  try {
+    const report = await electrobun.rpc?.request.heliosGetMetrics();
+    if (report?.summaries) metricsSummaries = report.summaries;
+  } catch { /* ignore */ }
+}
+
 // ── DOM helpers ────────────────────────────────────────
 
 function el(tag: string, cls?: string, text?: string): HTMLElement {
@@ -216,6 +310,8 @@ function btn(label: string, onClick: () => void, disabled = false): HTMLElement 
   b.addEventListener("click", onClick);
   return b;
 }
+
+// ── Render helpers ────────────────────────────────────
 
 // ── Render ─────────────────────────────────────────────
 
@@ -268,14 +364,21 @@ function render() {
 
   // Center — surface content
   const center = el("div", "center");
-  center.style.display = "block";
-  center.style.alignItems = "";
-  center.style.justifyContent = "";
 
-  if (activeTab === "terminal" && ids.terminalId) {
-    const termBox = el("div", "surface-ready");
-    termBox.textContent = `Terminal ${ids.terminalId} ready — native embed in Phase 3`;
-    center.appendChild(termBox);
+  if (activeTab === "terminal") {
+    if (ids.terminalId) {
+      const termContainer = el("div", "terminal-container");
+      termContainer.id = "xterm-container";
+      center.appendChild(termContainer);
+
+      // Mount xterm after DOM insertion
+      requestAnimationFrame(() => {
+        const container = document.getElementById("xterm-container");
+        if (container) mountXterm(container);
+      });
+    } else {
+      center.appendChild(el("div", "empty-state", ids.laneId ? "Run Spawn Terminal to open a pty" : "Run Full Lifecycle to start"));
+    }
   } else if (activeTab === "session") {
     // Show persisted lanes table
     center.appendChild(el("div", "section-title", "Persisted Lanes"));
@@ -325,6 +428,17 @@ function render() {
     rightRail.appendChild(auditContainer);
   }
 
+  // Metrics
+  if (metricsSummaries.length > 0) {
+    rightRail.appendChild(el("div", "section-title mt", "Metrics"));
+    for (const m of metricsSummaries) {
+      const card = el("div", "card");
+      card.appendChild(el("div", "card-label", m.metric.replace(/_/g, " ")));
+      card.appendChild(el("div", "card-value", `p50: ${m.p50}${m.unit} | p95: ${m.p95}${m.unit} (${m.count}x)`));
+      rightRail.appendChild(card);
+    }
+  }
+
   rightRail.appendChild(el("div", "section-title mt", "Diagnostics"));
   for (const [label, value] of [
     ["Runtime", runtimeState.lane.state !== "idle" ? "active" : "idle"],
@@ -342,7 +456,7 @@ function render() {
   // Status bar
   const statusbar = el("div", "statusbar");
   statusbar.textContent = ids.terminalId
-    ? `helios runtime — terminal spawned (${ids.terminalId.slice(0, 16)})`
+    ? `helios runtime — terminal active (${ids.terminalId.slice(0, 16)})`
     : ids.sessionId
       ? `helios runtime — session attached`
       : ids.laneId
@@ -360,5 +474,6 @@ function render() {
 document.addEventListener("DOMContentLoaded", async () => {
   render();
   await loadPersistedData();
+  await loadMetrics();
   render();
 });
