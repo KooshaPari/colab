@@ -9,8 +9,8 @@
  *
  *   // Get reference and run commands
  *   const terminal = document.querySelector('colab-terminal');
- *   terminal.run('npm install');
- *   terminal.run('npm run dev');
+ *   terminal.run('bun install');
+ *   terminal.run('bun run dev');
  *
  * Attributes:
  *   - cwd: Working directory for the terminal (required)

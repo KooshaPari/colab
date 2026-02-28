@@ -20,7 +20,6 @@ import * as node from "./peerDependencies/node";
 import * as typescript from "./peerDependencies/typescript";
 
 import { cpSync } from "fs";
-import { copy } from "fs-extra";
 import { writeFile } from "fs/promises";
 import {
 	APP_PATH,
@@ -1381,7 +1380,7 @@ const createWindow = (
 					return getFaviconForUrl(url);
 				},
 				copy: ({ src, dest }) => {
-					return copy(src, dest);
+					return cpSync(src, dest, { recursive: true });
 				},
 				gitShow: ({ repoRoot, options }) => {
 					return gitShow(repoRoot, options);

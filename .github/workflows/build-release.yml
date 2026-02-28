@@ -42,6 +42,11 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Install go-task
+        run: |
+          sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+          task --version
+
       - name: Cache llama.cpp build
         id: cache-check
         uses: actions/cache@v4
@@ -83,6 +88,11 @@ jobs:
         run: |
           curl -fsSL https://bun.sh/install | bash
           echo "$HOME/.bun/bin" >> $GITHUB_PATH
+
+      - name: Install go-task
+        run: |
+          sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+          task --version
 
       - name: Install dependencies
         run: bun install
@@ -229,6 +239,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Bun
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          echo "$HOME/.bun/bin" >> $GITHUB_PATH
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -245,11 +260,11 @@ jobs:
       - name: Update plugin version
         run: |
           cd test-plugin
-          npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version --allow-same-version
+          bunx npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version --allow-same-version
 
       - name: Publish to npm
         run: |
           cd test-plugin
-          npm publish --access public
+          bunx npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

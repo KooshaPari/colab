@@ -143,7 +143,7 @@ To make your plugin discoverable in Colab's plugin browser:
 
 3. Publish to npm:
    ```bash
-   npm publish
+   bunx npm publish
    ```
 
 Users can then find and install your plugin directly from Colab's Plugins panel.
@@ -158,7 +158,7 @@ Plugin slates can embed a full xterm.js terminal using the `<colab-terminal>` we
 
 ```javascript
 const terminal = document.getElementById('my-terminal');
-terminal.run('npm install');  // Run a command
+terminal.run('bun install');  // Run a command
 terminal.write('y\n');        // Send raw input
 terminal.clear();             // Clear screen
 terminal.kill();              // Kill process

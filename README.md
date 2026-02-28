@@ -59,13 +59,13 @@ Co(lab) is built with [Electrobun](https://github.com/blackboardsh/electrobun), 
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Start development server
-npm run dev
+bun run dev
 
 # Build for production
-npm run build:stable
+bun run build:stable
 ```
 
 ### Project Structure

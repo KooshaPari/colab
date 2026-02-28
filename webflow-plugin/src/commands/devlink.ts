@@ -170,7 +170,7 @@ async function handleInit(
 
   write('\r\n\x1b[32m✓ DevLink initialized successfully!\x1b[0m\r\n\r\n');
   write('Next steps:\r\n');
-  write('  1. Run: bun install (or npm install)\r\n');
+  write('  1. Run: bun install\r\n');
   write('  2. Run: wf devlink pull\r\n');
   write('\r\n');
 

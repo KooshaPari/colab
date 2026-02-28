@@ -285,7 +285,7 @@ export async function activate(api: PluginAPI): Promise<void> {
         export DO_NOT_TRACK=1
         expect -c '
           set timeout 120
-          spawn npx -y @webflow/webflow-cli auth login --force
+          spawn bunx -y @webflow/webflow-cli auth login --force
           expect {
             "Select the Webflow site" {
               send "\\r"
