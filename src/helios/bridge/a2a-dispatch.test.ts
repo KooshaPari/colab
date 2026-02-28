@@ -28,55 +28,63 @@ describe("createA2ADispatch", () => {
   });
 
   describe("agent.run", () => {
-    it("returns A2A_NOT_CONFIGURED error", async () => {
-      const command = createCommand("agent.run", { task: "do something" });
+    it("returns ok status with echo response", async () => {
+      const command = createCommand("agent.run", { message: "hello world" });
       const response = await dispatch(command);
 
-      expect(response.status).toBe("error");
-      expect(response.error?.code).toBe("A2A_NOT_CONFIGURED");
-      expect(response.error?.message).toContain("not configured");
+      expect(response.status).toBe("ok");
       expect(response.id).toBe("test-456");
       expect(response.type).toBe("response");
       expect(response.ts).toBeDefined();
-      expect(response.result).toBeNull();
+      expect(response.result).toBeDefined();
+      expect(response.error).toBeNull();
     });
 
-    it("has correct error envelope structure", async () => {
-      const command = createCommand("agent.run");
+    it("echoes the message from payload", async () => {
+      const command = createCommand("agent.run", { message: "test message" });
+      const response = await dispatch(command);
+
+      expect(response.result?.message).toBe("Echo: test message");
+      expect(response.result?.agent).toBe("helios-local");
+      expect(response.result?.timestamp).toBeDefined();
+    });
+
+    it("has correct success envelope structure", async () => {
+      const command = createCommand("agent.run", { message: "test" });
       const response = await dispatch(command);
 
       expect(response).toHaveProperty("id");
       expect(response).toHaveProperty("type", "response");
       expect(response).toHaveProperty("ts");
-      expect(response).toHaveProperty("status", "error");
-      expect(response.error?.retryable).toBe(false);
-      expect(response.error?.details?.method).toBe("agent.run");
+      expect(response).toHaveProperty("status", "ok");
+      expect(response.result).toBeDefined();
+      expect(response.error).toBeNull();
     });
   });
 
   describe("agent.cancel", () => {
-    it("returns A2A_NOT_CONFIGURED error", async () => {
+    it("returns ok status with cancelled result", async () => {
       const command = createCommand("agent.cancel", { taskId: "task-123" });
       const response = await dispatch(command);
 
-      expect(response.status).toBe("error");
-      expect(response.error?.code).toBe("A2A_NOT_CONFIGURED");
+      expect(response.status).toBe("ok");
       expect(response.id).toBe("test-456");
       expect(response.type).toBe("response");
       expect(response.ts).toBeDefined();
-      expect(response.result).toBeNull();
+      expect(response.result?.cancelled).toBe(true);
+      expect(response.error).toBeNull();
     });
 
-    it("has correct error envelope structure", async () => {
+    it("has correct success envelope structure", async () => {
       const command = createCommand("agent.cancel");
       const response = await dispatch(command);
 
       expect(response).toHaveProperty("id");
       expect(response).toHaveProperty("type", "response");
       expect(response).toHaveProperty("ts");
-      expect(response).toHaveProperty("status", "error");
-      expect(response.error?.retryable).toBe(false);
-      expect(response.error?.details?.method).toBe("agent.cancel");
+      expect(response).toHaveProperty("status", "ok");
+      expect(response.result).toBeDefined();
+      expect(response.error).toBeNull();
     });
   });
 
@@ -107,9 +115,9 @@ describe("createA2ADispatch", () => {
     });
   });
 
-  describe("error envelope structure", () => {
+  describe("envelope structure", () => {
     it("has id from command", async () => {
-      const command = createCommand("agent.run");
+      const command = createCommand("agent.run", { message: "test" });
       command.id = "custom-id-789";
       const response = await dispatch(command);
 
@@ -117,28 +125,35 @@ describe("createA2ADispatch", () => {
     });
 
     it("has type set to 'response'", async () => {
-      const command = createCommand("agent.run");
+      const command = createCommand("agent.run", { message: "test" });
       const response = await dispatch(command);
 
       expect(response.type).toBe("response");
     });
 
     it("has timestamp string", async () => {
-      const command = createCommand("agent.run");
+      const command = createCommand("agent.run", { message: "test" });
       const response = await dispatch(command);
 
       expect(typeof response.ts).toBe("string");
       expect(response.ts).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
 
-    it("has status field set to 'error'", async () => {
-      const command = createCommand("agent.run");
+    it("has status field for successful responses", async () => {
+      const command = createCommand("agent.run", { message: "test" });
+      const response = await dispatch(command);
+
+      expect(response.status).toBe("ok");
+    });
+
+    it("has status field for error responses", async () => {
+      const command = createCommand("agent.unknown");
       const response = await dispatch(command);
 
       expect(response.status).toBe("error");
     });
 
-    it("has error object with code and message", async () => {
+    it("has error object with code and message for errors", async () => {
       const command = createCommand("agent.unknown");
       const response = await dispatch(command);
 
@@ -148,18 +163,27 @@ describe("createA2ADispatch", () => {
       expect(response.error?.retryable).toBe(false);
     });
 
-    it("has error details with method", async () => {
-      const command = createCommand("agent.run");
+    it("has error details with method for errors", async () => {
+      const command = createCommand("agent.unknown");
       const response = await dispatch(command);
 
-      expect(response.error?.details?.method).toBe("agent.run");
+      expect(response.error?.details?.method).toBe("agent.unknown");
     });
 
-    it("has result set to null", async () => {
-      const command = createCommand("agent.cancel");
+    it("has result set for successful responses", async () => {
+      const command = createCommand("agent.run", { message: "test" });
+      const response = await dispatch(command);
+
+      expect(response.result).toBeDefined();
+      expect(response.error).toBeNull();
+    });
+
+    it("has result set to null for error responses", async () => {
+      const command = createCommand("agent.unknown");
       const response = await dispatch(command);
 
       expect(response.result).toBeNull();
+      expect(response.error).toBeDefined();
     });
   });
 });

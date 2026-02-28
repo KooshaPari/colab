@@ -61,6 +61,24 @@ export class InMemoryLocalBus implements LocalBus {
     return [...this.eventLog];
   }
 
+  restoreState(state: RuntimeState): void {
+    this.state = state;
+  }
+
+  getActiveLanes(): Array<{laneId: string, sessionId?: string, terminalId?: string}> {
+    // RuntimeState tracks a single lane/session/terminal state, not collections
+    // Return current state info if lane is active (not "new" or "closed")
+    if (this.state.lane !== "new" && this.state.lane !== "closed") {
+      return [{
+        laneId: "current",
+        sessionId: this.state.session !== "detached" ? "current" : undefined,
+        terminalId: this.state.terminal !== "idle" ? "current" : undefined
+      }];
+    }
+
+    return [];
+  }
+
   async publish(event: LocalBusEnvelope): Promise<void> {
     this.eventLog.push(event);
     return;
@@ -91,12 +109,12 @@ export class InMemoryLocalBus implements LocalBus {
 
   private async handleLifecycleCommand(command: LocalBusEnvelope, method: HandledMethod): Promise<LocalBusEnvelope> {
     const spec = METHOD_SPECS[method];
-    const forcedError = command.payload?.force_error === true;
-    const resultId = command.payload?.id ?? `${spec.resultKey}_${Date.now()}`;
-    const preferredTransport = typeof command.payload?.preferred_transport === "string"
-      ? command.payload.preferred_transport
+    const forcedError = command.payload?.['force_error'] === true;
+    const resultId = command.payload?.['id'] ?? `${spec.resultKey}_${Date.now()}`;
+    const preferredTransport = typeof command.payload?.['preferred_transport'] === "string"
+      ? command.payload['preferred_transport']
       : "cliproxy_harness";
-    const degraded = command.payload?.simulate_degrade === true;
+    const degraded = command.payload?.['simulate_degrade'] === true;
     const resolvedTransport = degraded ? "native_openai" : preferredTransport;
     const degradedReason = degraded
       ? "cliproxy_harness_unhealthy"
@@ -155,8 +173,8 @@ export class InMemoryLocalBus implements LocalBus {
   }
 
   private async handleRendererSwitch(command: LocalBusEnvelope): Promise<LocalBusEnvelope> {
-    const nextEngine = command.payload?.target_engine;
-    const forcedError = command.payload?.force_error === true;
+    const nextEngine = command.payload?.['target_engine'];
+    const forcedError = command.payload?.['force_error'] === true;
     const previousEngine = this.rendererEngine;
 
     await this.publish({

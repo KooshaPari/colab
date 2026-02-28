@@ -74,6 +74,57 @@ export function createBusRpcBridge(opts: BusRpcBridgeOptions): BusRpcBridge {
       method: string,
       params: Record<string, unknown>,
     ): Promise<LocalBusEnvelope> {
+      // Handle lane.list query
+      if (method === "lane.list") {
+        const lanes = bus.getActiveLanes();
+        return {
+          id: crypto.randomUUID(),
+          type: "response",
+          ts: new Date().toISOString(),
+          status: "ok",
+          result: { lanes }
+        };
+      }
+
+      // Handle session.reconnect
+      if (method === "session.reconnect") {
+        const laneId = params['laneId'] as string;
+        if (!laneId) {
+          return {
+            id: crypto.randomUUID(),
+            type: "response",
+            ts: new Date().toISOString(),
+            status: "error",
+            result: null,
+            error: {
+              code: "SESSION_RECONNECT_FAILED",
+              message: "laneId is required",
+              retryable: false,
+              details: { method: "session.reconnect" }
+            }
+          };
+        }
+
+        // Delegate to session.attach logic with the existing laneId
+        const sessionEnvelope: LocalBusEnvelope = {
+          id: crypto.randomUUID(),
+          type: "command",
+          ts: new Date().toISOString(),
+          workspace_id: workspaceId,
+          method: "session.attach",
+          payload: { id: `${laneId}:session` },
+          correlation_id: crypto.randomUUID(),
+          meta: {
+            workspace_id: workspaceId,
+            session_id: (params['session_id'] as string) ?? null,
+            correlation_id: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+          },
+        };
+
+        return await dispatch(sessionEnvelope);
+      }
+
       const correlationId = crypto.randomUUID();
       const envelope: LocalBusEnvelope = {
         id: correlationId,
@@ -85,7 +136,7 @@ export function createBusRpcBridge(opts: BusRpcBridgeOptions): BusRpcBridge {
         correlation_id: correlationId,
         meta: {
           workspace_id: workspaceId,
-          session_id: (params.session_id as string) ?? null,
+          session_id: (params['session_id'] as string) ?? null,
           correlation_id: correlationId,
           timestamp: new Date().toISOString(),
         },
@@ -112,15 +163,15 @@ export function createBusRpcBridge(opts: BusRpcBridgeOptions): BusRpcBridge {
       // Persist lane state after lifecycle commands
       if (method === "lane.create" || method === "session.attach" || method === "terminal.spawn") {
         const result = response.result as Record<string, unknown> | null;
-        const laneId = (result?.lane_id as string) ?? (params.lane_id as string) ?? (params.id as string)?.split(":")[0] ?? null;
+        const laneId = (result?.['lane_id'] as string) ?? (params['lane_id'] as string) ?? (params['id'] as string)?.split(":")[0] ?? null;
         if (laneId) {
           try {
             upsertLane({
               workspaceId,
               laneId,
-              sessionId: (result?.session_id as string) ?? null,
-              terminalId: (result?.terminal_id as string) ?? null,
-              transport: (result?.diagnostics as Record<string, unknown>)?.resolved_transport as string ?? "cliproxy_harness",
+              sessionId: (result?.['session_id'] as string) ?? null,
+              terminalId: (result?.['terminal_id'] as string) ?? null,
+              transport: (result?.['diagnostics'] as Record<string, unknown>)?.['resolved_transport'] as string ?? "cliproxy_harness",
               state: JSON.stringify(state),
               lastUpdated: new Date().toISOString(),
             });

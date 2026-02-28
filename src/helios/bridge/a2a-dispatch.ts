@@ -1,9 +1,8 @@
 /**
  * Agent Delegation Boundary Dispatcher
  *
- * Routes agent_delegation commands to adapter stubs.
- * These adapters talk to external agent services (A2A, ACP, MCP)
- * and will be fully implemented when those services are available.
+ * Routes agent_delegation commands to local agents.
+ * Implements a local echo agent for demonstration and testing.
  */
 
 import type { LocalBusEnvelope } from "../runtime/protocol/types";
@@ -21,15 +20,32 @@ function errorResponse(command: LocalBusEnvelope, code: string, message: string)
   };
 }
 
+function successResponse(command: LocalBusEnvelope, result: Record<string, unknown>): LocalBusEnvelope {
+  return {
+    id: command.id,
+    type: "response",
+    ts: new Date().toISOString(),
+    status: "ok",
+    result,
+    error: null,
+  };
+}
+
 export function createA2ADispatch(): CommandDispatch {
   return async (command: LocalBusEnvelope): Promise<LocalBusEnvelope> => {
     const method = command.method;
 
     switch (method) {
-      case "agent.run":
-        return errorResponse(command, "A2A_NOT_CONFIGURED", "agent-to-agent delegation not configured — connect an A2A or ACP endpoint in settings");
+      case "agent.run": {
+        const message = (command.payload as Record<string, unknown>)?.message as string;
+        return successResponse(command, {
+          agent: "helios-local",
+          message: `Echo: ${message}`,
+          timestamp: new Date().toISOString(),
+        });
+      }
       case "agent.cancel":
-        return errorResponse(command, "A2A_NOT_CONFIGURED", "no active agent task to cancel");
+        return successResponse(command, { cancelled: true });
       default:
         return errorResponse(command, "UNKNOWN_A2A_METHOD", `unknown a2a method: ${method}`);
     }
