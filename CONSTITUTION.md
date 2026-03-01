@@ -8,6 +8,7 @@ Changes to this document require explicit team consensus.
 - **Runtime**: Bun 1.2.20+
 - **Desktop framework**: ElectroBun (Zig-based, 12MB base)
 - **Language**: TypeScript 5.4+ with `strict: true`
+- **Type checker**: tsgo (`@typescript/native-preview`) — 10x faster than tsc
 - **Target**: ES2022, Bundler module resolution
 
 ## Testing
@@ -33,7 +34,7 @@ Changes to this document require explicit team consensus.
 
 ## Quality Lane Hierarchy
 
-- `quality` = canonical full check (fmt + test + lint, mutating)
+- `quality` = canonical full check (fmt + lint + typecheck + test, mutating)
 - `quality:quick` = fast readonly (no file writes)
 - `quality:ci` = non-mutating PR gate
 - `quality:release-lint` = release validation

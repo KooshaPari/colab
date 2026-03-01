@@ -70,12 +70,12 @@ describe("InMemoryLocalBus", () => {
       expect(response.type).toBe("response");
       expect(response.status).toBe("ok");
       expect(response.result).toBeDefined();
-      expect(response.result?.lane_id).toBeDefined();
-      expect(typeof response.result?.lane_id).toBe("string");
-      expect(response.result?.diagnostics).toBeDefined();
-      expect(response.result?.diagnostics?.preferred_transport).toBe("cliproxy_harness");
-      expect(response.result?.diagnostics?.resolved_transport).toBe("cliproxy_harness");
-      expect(response.result?.diagnostics?.degraded_reason).toBeNull();
+      expect((response.result as any)?.lane_id).toBeDefined();
+      expect(typeof (response.result as any)?.lane_id).toBe("string");
+      expect((response.result as any)?.diagnostics).toBeDefined();
+      expect((response.result as any)?.diagnostics?.preferred_transport).toBe("cliproxy_harness");
+      expect((response.result as any)?.diagnostics?.resolved_transport).toBe("cliproxy_harness");
+      expect((response.result as any)?.diagnostics?.degraded_reason).toBeNull();
     });
 
     it("should handle lane.create with force_error", async () => {
@@ -129,7 +129,7 @@ describe("InMemoryLocalBus", () => {
       const command = createCommand("lane.create", { id: "custom-lane-123" });
       const response = await bus.request(command);
 
-      expect(response.result?.lane_id).toBe("custom-lane-123");
+      expect((response.result as any)?.lane_id).toBe("custom-lane-123");
     });
   });
 
@@ -142,9 +142,9 @@ describe("InMemoryLocalBus", () => {
       expect(response.type).toBe("response");
       expect(response.status).toBe("ok");
       expect(response.result).toBeDefined();
-      expect(response.result?.session_id).toBeDefined();
-      expect(typeof response.result?.session_id).toBe("string");
-      expect(response.result?.diagnostics).toBeDefined();
+      expect((response.result as any)?.session_id).toBeDefined();
+      expect(typeof (response.result as any)?.session_id).toBe("string");
+      expect((response.result as any)?.diagnostics).toBeDefined();
     });
 
     it("should handle session.attach with force_error", async () => {
@@ -194,9 +194,9 @@ describe("InMemoryLocalBus", () => {
       expect(response.type).toBe("response");
       expect(response.status).toBe("ok");
       expect(response.result).toBeDefined();
-      expect(response.result?.terminal_id).toBeDefined();
-      expect(typeof response.result?.terminal_id).toBe("string");
-      expect(response.result?.diagnostics).toBeDefined();
+      expect((response.result as any)?.terminal_id).toBeDefined();
+      expect(typeof (response.result as any)?.terminal_id).toBe("string");
+      expect((response.result as any)?.diagnostics).toBeDefined();
     });
 
     it("should handle terminal.spawn with force_error", async () => {
@@ -248,9 +248,9 @@ describe("InMemoryLocalBus", () => {
       expect(response.type).toBe("response");
       expect(response.status).toBe("ok");
       expect(response.result).toBeDefined();
-      expect(response.result?.active_engine).toBe("ghostty");
-      expect(response.result?.available_engines).toEqual(["ghostty", "rio"]);
-      expect(response.result?.hot_swap_supported).toBe(true);
+      expect((response.result as any)?.active_engine).toBe("ghostty");
+      expect((response.result as any)?.available_engines).toEqual(["ghostty", "rio"]);
+      expect((response.result as any)?.hot_swap_supported).toBe(true);
     });
 
     it("should return updated active_engine after renderer.switch", async () => {
@@ -260,7 +260,7 @@ describe("InMemoryLocalBus", () => {
       const capsCommand = createCommand("renderer.capabilities");
       const response = await bus.request(capsCommand);
 
-      expect(response.result?.active_engine).toBe("rio");
+      expect((response.result as any)?.active_engine).toBe("rio");
     });
   });
 
@@ -273,8 +273,8 @@ describe("InMemoryLocalBus", () => {
       expect(response.type).toBe("response");
       expect(response.status).toBe("ok");
       expect(response.result).toBeDefined();
-      expect(response.result?.active_engine).toBe("rio");
-      expect(response.result?.previous_engine).toBe("ghostty");
+      expect((response.result as any)?.active_engine).toBe("rio");
+      expect((response.result as any)?.previous_engine).toBe("ghostty");
     });
 
     it("should switch back to valid engine ghostty", async () => {
@@ -287,8 +287,8 @@ describe("InMemoryLocalBus", () => {
       const response = await bus.request(switchToGhostty);
 
       expect(response.status).toBe("ok");
-      expect(response.result?.active_engine).toBe("ghostty");
-      expect(response.result?.previous_engine).toBe("rio");
+      expect((response.result as any)?.active_engine).toBe("ghostty");
+      expect((response.result as any)?.previous_engine).toBe("rio");
     });
 
     it("should reject invalid engine with error", async () => {
@@ -357,7 +357,7 @@ describe("InMemoryLocalBus", () => {
       const capsCommand = createCommand("renderer.capabilities");
       const response = await bus.request(capsCommand);
 
-      expect(response.result?.active_engine).toBe("ghostty");
+      expect((response.result as any)?.active_engine).toBe("ghostty");
     });
   });
 
@@ -370,10 +370,12 @@ describe("InMemoryLocalBus", () => {
       const response = await bus.request(command);
 
       expect(response.status).toBe("ok");
-      expect(response.result?.diagnostics?.preferred_transport).toBe("cliproxy_harness");
-      expect(response.result?.diagnostics?.resolved_transport).toBe("native_openai");
-      expect(response.result?.diagnostics?.degraded_reason).toBe("cliproxy_harness_unhealthy");
-      expect(response.result?.diagnostics?.degraded_at).toBeDefined();
+      expect((response.result as any)?.diagnostics?.preferred_transport).toBe("cliproxy_harness");
+      expect((response.result as any)?.diagnostics?.resolved_transport).toBe("native_openai");
+      expect((response.result as any)?.diagnostics?.degraded_reason).toBe(
+        "cliproxy_harness_unhealthy",
+      );
+      expect((response.result as any)?.diagnostics?.degraded_at).toBeDefined();
     });
 
     it("should keep preferred_transport when simulate_degrade is false", async () => {
@@ -384,10 +386,10 @@ describe("InMemoryLocalBus", () => {
       const response = await bus.request(command);
 
       expect(response.status).toBe("ok");
-      expect(response.result?.diagnostics?.preferred_transport).toBe("cliproxy_harness");
-      expect(response.result?.diagnostics?.resolved_transport).toBe("cliproxy_harness");
-      expect(response.result?.diagnostics?.degraded_reason).toBeNull();
-      expect(response.result?.diagnostics?.degraded_at).toBeNull();
+      expect((response.result as any)?.diagnostics?.preferred_transport).toBe("cliproxy_harness");
+      expect((response.result as any)?.diagnostics?.resolved_transport).toBe("cliproxy_harness");
+      expect((response.result as any)?.diagnostics?.degraded_reason).toBeNull();
+      expect((response.result as any)?.diagnostics?.degraded_at).toBeNull();
     });
 
     it("should use default transport when preferred_transport is not specified", async () => {
@@ -395,8 +397,8 @@ describe("InMemoryLocalBus", () => {
       const response = await bus.request(command);
 
       expect(response.status).toBe("ok");
-      expect(response.result?.diagnostics?.preferred_transport).toBe("cliproxy_harness");
-      expect(response.result?.diagnostics?.resolved_transport).toBe("cliproxy_harness");
+      expect((response.result as any)?.diagnostics?.preferred_transport).toBe("cliproxy_harness");
+      expect((response.result as any)?.diagnostics?.resolved_transport).toBe("cliproxy_harness");
     });
   });
 
@@ -460,8 +462,8 @@ describe("InMemoryLocalBus", () => {
       const command = createCommand("session.attach");
       const response = await bus.request(command);
 
-      expect(response.result?.state).toBeDefined();
-      expect(response.result?.state).toEqual(bus.getState());
+      expect((response.result as any)?.state).toBeDefined();
+      expect((response.result as any)?.state).toEqual(bus.getState());
     });
   });
 
@@ -540,9 +542,9 @@ describe("InMemoryLocalBus", () => {
       const command = createCommand("terminal.spawn");
       const response = await bus.request(command);
 
-      expect(response.result?.state).toBeDefined();
+      expect((response.result as any)?.state).toBeDefined();
       const currentState = bus.getState();
-      expect(response.result?.state).toEqual(currentState);
+      expect((response.result as any)?.state).toEqual(currentState);
     });
 
     it("should emit state in transition events", async () => {
@@ -804,7 +806,7 @@ describe("InMemoryLocalBus", () => {
       expect(response.type).toBe("response");
       expect(response.status).toBe("ok");
       expect(response.result).toBeDefined();
-      expect(response.result?.lane_id).toBe("lane-1");
+      expect((response.result as any)?.lane_id).toBe("lane-1");
     });
 
     it("should successfully switch to existing lane using 'laneId' field", async () => {
@@ -821,7 +823,7 @@ describe("InMemoryLocalBus", () => {
       expect(response.type).toBe("response");
       expect(response.status).toBe("ok");
       expect(response.result).toBeDefined();
-      expect(response.result?.lane_id).toBe("lane-2");
+      expect((response.result as any)?.lane_id).toBe("lane-2");
     });
 
     it("should return correct state after switch", async () => {
@@ -838,8 +840,8 @@ describe("InMemoryLocalBus", () => {
       const switchCommand = createCommand("lane.switch", { id: "lane-1" });
       const response = await bus.request(switchCommand);
 
-      expect(response.result?.state).toBeDefined();
-      const state = response.result?.state;
+      expect((response.result as any)?.state).toBeDefined();
+      const state = (response.result as any)?.state;
       expect(state?.lane).toBeDefined();
       expect(state?.session).toBeDefined();
       expect(state?.terminal).toBeDefined();

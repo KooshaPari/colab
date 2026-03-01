@@ -38,7 +38,8 @@
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "lint": "oxlint -c .oxlintrc.json .",
-    "lint:fix": "oxlint -c .oxlintrc.json --fix ."
+    "lint:fix": "oxlint -c .oxlintrc.json --fix .",
+    "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
     "@webflow/webflow-cli": "^1.1.1",
@@ -61,6 +62,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.1.0",
+    "@typescript/native-preview": "^7.0.0-dev.20260228.1",
     "oxfmt": "^0.27.0",
     "oxlint": "^1.43.0",
     "typescript": "^5.4.5",
