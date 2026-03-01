@@ -13,9 +13,16 @@ import {
   getBoundaryDispatchDecision,
 } from "../runtime/protocol/boundary_adapter";
 import { broadcastToAllWindowsInWorkspace } from "../../main/workspaceWindows";
-import { upsertLane, writeAuditEntry } from "./persistence";
+import {
+  upsertLane,
+  writeAuditEntry,
+  loadSessionSnapshot,
+  saveSessionSnapshot,
+} from "./persistence";
 import type { RuntimeMetrics } from "../runtime/diagnostics/metrics";
 import type { HeliosTerminalBridge } from "./terminal-bridge";
+import { createMuxerDispatch } from "./muxer-dispatch";
+import { createToolDispatch } from "./tool-dispatch";
 
 type CommandDispatch = (command: LocalBusEnvelope) => Promise<LocalBusEnvelope>;
 
@@ -24,6 +31,7 @@ export type BusRpcBridgeOptions = {
   workspaceId: string;
   dispatchTool?: CommandDispatch;
   dispatchA2A?: CommandDispatch;
+  dispatchMuxer?: CommandDispatch;
   metrics?: RuntimeMetrics;
   termBridge?: HeliosTerminalBridge;
   windowId?: string;
@@ -44,13 +52,60 @@ export type BusRpcBridge = {
  * - Bus events are broadcast to all windows in the workspace via RPC
  */
 export function createBusRpcBridge(opts: BusRpcBridgeOptions): BusRpcBridge {
-  const { bus, workspaceId, dispatchTool, dispatchA2A, metrics, termBridge, windowId } = opts;
+  const {
+    bus,
+    workspaceId,
+    dispatchTool,
+    dispatchA2A,
+    dispatchMuxer,
+    metrics,
+    termBridge,
+    windowId,
+  } = opts;
   let disposed = false;
+
+  // Restore session snapshot on bridge creation
+  try {
+    const snapshot = loadSessionSnapshot(workspaceId);
+    if (snapshot && snapshot.length > 0) {
+      bus.restoreLanes(snapshot);
+    }
+  } catch {
+    // Silently fail; start with fresh state
+  }
+
+  // Create combined tool dispatcher: tries tool dispatch first (for share.*/zmx.*),
+  // then muxer dispatch for unhandled methods
+  const createCombinedDispatcher = (): CommandDispatch => {
+    const toolDispatch = createToolDispatch();
+    const muxerDispatch = createMuxerDispatch();
+
+    return async (command: LocalBusEnvelope): Promise<LocalBusEnvelope> => {
+      const method = command.method;
+
+      // Route share.* and zmx.* to tool dispatch
+      if (method.startsWith("share.") || method.startsWith("zmx.")) {
+        return toolDispatch(command);
+      }
+
+      // Route muxer.* to muxer dispatch
+      if (method.startsWith("muxer.")) {
+        return muxerDispatch(command);
+      }
+
+      // Fallback to tool dispatch for unknown methods
+      return toolDispatch(command);
+    };
+  };
+
+  // Resolve tool dispatch: use provided dispatchTool, fall back to combined
+  // dispatcher that routes to tool and muxer dispatchers
+  const resolvedDispatchTool = dispatchTool || dispatchMuxer || createCombinedDispatcher();
 
   // Create boundary dispatcher with all three boundaries
   const dispatch = createBoundaryDispatcher({
     dispatchLocal: (command) => bus.request(command),
-    dispatchTool,
+    dispatchTool: resolvedDispatchTool,
     dispatchA2A,
   });
 
@@ -208,6 +263,14 @@ export function createBusRpcBridge(opts: BusRpcBridgeOptions): BusRpcBridge {
           if (termId) {
             termBridge.spawnTerminal(termId, workspaceId, windowId);
           }
+        }
+
+        // Save session snapshot after lifecycle changes
+        try {
+          const exportedLanes = bus.exportLanes();
+          saveSessionSnapshot(workspaceId, exportedLanes);
+        } catch {
+          // Don't fail the command if snapshot save fails
         }
       }
 

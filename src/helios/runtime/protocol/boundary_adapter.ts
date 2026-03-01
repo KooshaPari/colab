@@ -32,6 +32,7 @@ const LOCAL_METHODS = new Set([
   "lane.create",
   "lane.attach",
   "lane.cleanup",
+  "lane.switch",
   "boundary.local.dispatch",
 ]);
 
@@ -43,6 +44,11 @@ const TOOL_METHODS = new Set([
   "share.tmate.stop",
   "zmx.checkpoint",
   "zmx.restore",
+  "muxer.list",
+  "muxer.spawn",
+  "muxer.attach",
+  "muxer.detach",
+  "muxer.kill",
   "boundary.tool.dispatch",
 ]);
 
@@ -127,7 +133,7 @@ export function createBoundaryDispatcher(input: BoundaryDispatcherInput): Comman
       );
     }
 
-    const decision = getBoundaryDispatchDecision(command.method);
+    const decision = getBoundaryDispatchDecision(command.method ?? "");
     const response =
       decision.adapter === "local_bus"
         ? await input.dispatchLocal(command)

@@ -28,19 +28,16 @@ describe("createA2ADispatch", () => {
   });
 
   describe("agent.run", () => {
-    it("returns error status when command not found", async () => {
-      const command = createCommand("agent.run", { command: "nonexistent-cmd-xyz-123" });
+    it("returns error when ACP endpoint not configured", async () => {
+      const command = createCommand("agent.run", { message: "test prompt" });
       const response = await dispatch(command);
 
       expect(response.status).toBe("error");
-      expect(response.id).toBe("test-456");
-      expect(response.type).toBe("response");
-      expect(response.ts).toBeDefined();
-      expect(response.error?.code).toBe("AGENT_RUN_FAILED");
+      expect(response.error?.code).toBe("ACP_NOT_CONFIGURED");
     });
 
-    it("returns error envelope with proper structure on failure", async () => {
-      const command = createCommand("agent.run", { command: "invalid-cmd-abc" });
+    it("returns error envelope with proper structure when ACP not configured", async () => {
+      const command = createCommand("agent.run", { message: "test" });
       const response = await dispatch(command);
 
       expect(response).toHaveProperty("id");
@@ -48,7 +45,7 @@ describe("createA2ADispatch", () => {
       expect(response).toHaveProperty("ts");
       expect(response).toHaveProperty("status", "error");
       expect(response.result).toBeNull();
-      expect(response.error?.code).toBe("AGENT_RUN_FAILED");
+      expect(response.error?.code).toBe("ACP_NOT_CONFIGURED");
     });
   });
 
@@ -87,6 +84,41 @@ describe("createA2ADispatch", () => {
 
     it("has correct success envelope structure", async () => {
       const command = createCommand("agent.list");
+      const response = await dispatch(command);
+
+      expect(response).toHaveProperty("id");
+      expect(response).toHaveProperty("type", "response");
+      expect(response).toHaveProperty("ts");
+      expect(response).toHaveProperty("status", "ok");
+      expect(response.result).toBeDefined();
+      expect(response.error).toBeNull();
+    });
+  });
+
+  describe("agent.status", () => {
+    it("returns agent status information", async () => {
+      const command = createCommand("agent.status");
+      const response = await dispatch(command);
+
+      expect(response.status).toBe("ok");
+      expect(response.result?.configured).toBeDefined();
+      expect(typeof response.result?.configured).toBe("boolean");
+      expect(response.result?.acpClientInitialized).toBeDefined();
+      expect(typeof response.result?.acpClientInitialized).toBe("boolean");
+      expect(response.result?.activeAgentCount).toBeDefined();
+      expect(typeof response.result?.activeAgentCount).toBe("number");
+    });
+
+    it("returns zero active agents when none running", async () => {
+      const command = createCommand("agent.status");
+      const response = await dispatch(command);
+
+      expect(response.status).toBe("ok");
+      expect(response.result?.activeAgentCount).toBe(0);
+    });
+
+    it("has correct success envelope structure", async () => {
+      const command = createCommand("agent.status");
       const response = await dispatch(command);
 
       expect(response).toHaveProperty("id");

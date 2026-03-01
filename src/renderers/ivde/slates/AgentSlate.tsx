@@ -143,7 +143,9 @@ export const AgentSlate = ({ node, tabId }: { node?: CachedFileType; tabId: stri
       console.log("AgentSlate: Context file exists on mount:", exists);
 
       if (exists) {
-        const result = await electrobun.rpc?.request.readFile({ path: contextFilePath });
+        const result = (await electrobun.rpc?.request.readFile({ path: contextFilePath })) as
+          | { textContent?: string }
+          | undefined;
         console.log(
           "AgentSlate: Initial context file content length:",
           result?.textContent?.length || 0,
@@ -241,7 +243,9 @@ export const AgentSlate = ({ node, tabId }: { node?: CachedFileType; tabId: stri
       console.log("AgentSlate: Context file exists (reload):", exists);
 
       if (exists) {
-        const result = await electrobun.rpc?.request.readFile({ path: contextFilePath });
+        const result = (await electrobun.rpc?.request.readFile({ path: contextFilePath })) as
+          | { textContent?: string }
+          | undefined;
         console.log(
           "AgentSlate: Context file content length (reload):",
           result?.textContent?.length || 0,
@@ -375,19 +379,21 @@ export const AgentSlate = ({ node, tabId }: { node?: CachedFileType; tabId: stri
       if (selectedModel() === "helios-agent") {
         // Route through helios runtime
         try {
-          const projectPath = node.path;
-
-          const response = await electrobun.rpc?.request.heliosRequest({
+          const response = (await electrobun.rpc?.request.heliosRequest({
             method: "agent.run",
             payload: {
-              command: "claude",
-              args: ["-p", userMessage.content],
-              cwd: projectPath,
+              message: userMessage.content,
+              config: {
+                endpoint: "", // Will use env var if empty
+                apiKey: "",
+              },
             },
-          });
+          })) as
+            | { status?: string; result?: { content?: string }; error?: { message?: string } }
+            | undefined;
 
-          if (response?.status === "ok" && response?.result?.stdout) {
-            responseText = response.result.stdout.trim();
+          if (response?.status === "ok" && response?.result?.content) {
+            responseText = response.result.content.trim();
           } else if (response?.status === "error") {
             throw new Error(response?.error?.message || "Helios agent error");
           } else {
@@ -440,7 +446,7 @@ export const AgentSlate = ({ node, tabId }: { node?: CachedFileType; tabId: stri
         conversationPrompt += `User: ${currentMsg.content}\n\nAssistant:`;
 
         // Send to llama.cpp runner
-        const response = await electrobun.rpc?.request.llamaCompletion({
+        const response = (await electrobun.rpc?.request.llamaCompletion({
           model: selectedModel(),
           prompt: conversationPrompt,
           options: {
@@ -449,7 +455,7 @@ export const AgentSlate = ({ node, tabId }: { node?: CachedFileType; tabId: stri
             top_p: topP(),
             repeat_penalty: repeatPenalty(),
           },
-        });
+        })) as { ok?: boolean; response?: string; error?: string } | undefined;
 
         if (response?.ok && response.response) {
           responseText = response.response.trim();
@@ -474,7 +480,8 @@ export const AgentSlate = ({ node, tabId }: { node?: CachedFileType; tabId: stri
       const errorMessage: Message = {
         role: "assistant",
         content:
-          "Sorry, I encountered an error while generating a response. Please make sure your local AI model is running.",
+          "Sorry, I encountered an error while generating a response. " +
+          "Please check that your ACP endpoint is configured and available.",
         timestamp: Date.now(),
       };
 

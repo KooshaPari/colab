@@ -27,6 +27,9 @@ export type RuntimeEvent =
   | "lane.share.stopped"
   | "lane.cleanup.started"
   | "lane.cleanup.completed"
+  | "lane.switch.requested"
+  | "lane.switch.succeeded"
+  | "lane.switch.failed"
   | "session.attach.requested"
   | "session.attach.succeeded"
   | "session.restore.started"
@@ -64,6 +67,10 @@ export function transition(state: RuntimeState, event: RuntimeEvent): RuntimeSta
       return { ...state, lane: "cleaning" };
     case "lane.cleanup.completed":
       return { ...state, lane: "closed" };
+    case "lane.switch.requested":
+    case "lane.switch.succeeded":
+    case "lane.switch.failed":
+      return state;
     case "session.attach.requested":
       return { ...state, session: "attaching" };
     case "session.attach.succeeded":

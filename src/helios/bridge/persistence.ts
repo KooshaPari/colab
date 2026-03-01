@@ -6,6 +6,7 @@
  */
 
 import db from "../../main/goldfishdb/db";
+import type { BusLaneState } from "../runtime/protocol/bus";
 
 // ── Settings ───────────────────────────────────────────
 
@@ -155,4 +156,57 @@ export function getRecentAudit(limit = 50): Array<{
       sessionId: d.sessionId ?? null,
       detail: d.detail,
     }));
+}
+
+// ── Session Snapshots ───────────────────────────
+
+export type SessionSnapshot = BusLaneState;
+
+export function saveSessionSnapshot(workspaceId: string, lanes: SessionSnapshot[]): void {
+  try {
+    const { data } = db.collection("helios_session_snapshots").query();
+    const existing = data.find((d) => d.workspaceId === workspaceId);
+
+    const snapshotData = {
+      workspaceId,
+      lanes: JSON.stringify(lanes),
+      timestamp: new Date().toISOString(),
+    };
+
+    if (existing) {
+      db.collection("helios_session_snapshots").update(existing.id, snapshotData);
+    } else {
+      db.collection("helios_session_snapshots").insert(snapshotData);
+    }
+  } catch {
+    // Silently fail to avoid disrupting workflow
+  }
+}
+
+export function loadSessionSnapshot(workspaceId: string): SessionSnapshot[] | null {
+  try {
+    const { data } = db.collection("helios_session_snapshots").query();
+    const snapshot = data.find((d) => d.workspaceId === workspaceId);
+
+    if (!snapshot || !snapshot.lanes) {
+      return null;
+    }
+
+    return JSON.parse(snapshot.lanes) as SessionSnapshot[];
+  } catch {
+    return null;
+  }
+}
+
+export function clearSessionSnapshot(workspaceId: string): void {
+  try {
+    const { data } = db.collection("helios_session_snapshots").query();
+    const snapshot = data.find((d) => d.workspaceId === workspaceId);
+
+    if (snapshot) {
+      db.collection("helios_session_snapshots").remove(snapshot.id);
+    }
+  } catch {
+    // Silently fail
+  }
 }

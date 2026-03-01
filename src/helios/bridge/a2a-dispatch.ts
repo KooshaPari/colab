@@ -2,23 +2,38 @@
  * Agent Delegation Boundary Dispatcher
  *
  * Routes agent_delegation commands to local agents.
- * Spawns real agent subprocesses via Bun.spawn().
- * Supports: agent.run, agent.cancel, agent.list
+ * Uses ACP client for agent execution.
+ * Supports: agent.run, agent.cancel, agent.list, agent.status
  */
 
 import type { LocalBusEnvelope } from "../runtime/protocol/types";
+import { AcpClient } from "../runtime/integrations/acp_client/client";
+import type { AcpConfig } from "../runtime/integrations/acp_client/adapter";
 
-interface AgentProcess {
+interface AgentTask {
   id: string;
-  proc: ReturnType<typeof Bun.spawn>;
-  stdout: string;
-  stderr: string;
+  taskId: string;
   status: "running" | "completed" | "cancelled" | "errored";
+  content?: string;
+  model?: string;
+  usage?: { inputTokens: number; outputTokens: number };
 }
 
 type CommandDispatch = (command: LocalBusEnvelope) => Promise<LocalBusEnvelope>;
 
-const activeAgents = new Map<string, AgentProcess>();
+const activeAgents = new Map<string, AgentTask>();
+let acpClient: AcpClient | null = null;
+let acpClientInitialized = false;
+
+function getDefaultAcpConfig(): Partial<AcpConfig> {
+  const endpoint = process.env.HELIOS_ACP_ENDPOINT;
+  const apiKey = process.env.HELIOS_ACP_API_KEY;
+
+  return {
+    endpoint: endpoint || "",
+    apiKey: apiKey || "",
+  };
+}
 
 function errorResponse(command: LocalBusEnvelope, code: string, message: string): LocalBusEnvelope {
   return {
@@ -54,61 +69,60 @@ export function createA2ADispatch(): CommandDispatch {
       case "agent.run": {
         try {
           const payload = command.payload as Record<string, unknown>;
-          const proc_command = (payload?.command as string) || "claude";
-          const args = (payload?.args as string[]) || [];
-          const input = (payload?.input as string) || "";
-          const cwd = (payload?.cwd as string) || process.cwd();
+          const message = (payload?.message as string) || "";
+          const providedConfig = (payload?.config as Partial<AcpConfig>) || {};
 
-          // Spawn the subprocess
-          const proc = Bun.spawn([proc_command, ...args], {
-            cwd,
-            stdio: ["pipe", "pipe", "pipe"],
-          });
+          // Merge provided config with environment defaults
+          const envConfig = getDefaultAcpConfig();
+          const config: Partial<AcpConfig> = {
+            ...envConfig,
+            ...providedConfig,
+          };
 
-          const stdoutBuf: Uint8Array[] = [];
-          const stderrBuf: Uint8Array[] = [];
-
-          // Collect stdout
-          if (proc.stdout) {
-            for await (const chunk of proc.stdout) {
-              stdoutBuf.push(chunk);
+          // Lazy initialize ACP client if not already done
+          if (!acpClientInitialized) {
+            if (!config.endpoint) {
+              return errorResponse(
+                command,
+                "ACP_NOT_CONFIGURED",
+                "ACP endpoint not configured (set HELIOS_ACP_ENDPOINT env " +
+                  "var or pass in payload config)",
+              );
             }
+
+            acpClient = new AcpClient();
+            await acpClient.init({
+              endpoint: config.endpoint,
+              apiKey: config.apiKey || "",
+              model: config.model,
+              timeoutMs: config.timeoutMs,
+              maxRetries: config.maxRetries,
+            });
+            acpClientInitialized = true;
           }
 
-          // Collect stderr
-          if (proc.stderr) {
-            for await (const chunk of proc.stderr) {
-              stderrBuf.push(chunk);
-            }
+          if (!acpClient) {
+            return errorResponse(command, "AGENT_RUN_FAILED", "ACP client not initialized");
           }
 
-          // Send input if provided
-          if (input && proc.stdin) {
-            proc.stdin.write(input);
-            proc.stdin.end();
-          }
-
-          // Wait for process to complete
-          const exitCode = await proc.exited;
-
-          const stdout = Buffer.concat(stdoutBuf).toString("utf-8");
-          const stderr = Buffer.concat(stderrBuf).toString("utf-8");
+          const result = await acpClient.execute(message, agentId);
 
           // Track in activeAgents
           activeAgents.set(agentId, {
             id: agentId,
-            proc,
-            stdout,
-            stderr,
-            status: exitCode === 0 ? "completed" : "errored",
+            taskId: result.taskId,
+            status: "completed",
+            content: result.content,
+            model: result.model,
+            usage: result.usage,
           });
 
           return successResponse(command, {
             agentId,
-            stdout,
-            stderr,
-            exitCode,
-            status: exitCode === 0 ? "completed" : "errored",
+            content: result.content,
+            model: result.model,
+            usage: result.usage,
+            status: "completed",
           });
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
@@ -123,15 +137,8 @@ export function createA2ADispatch(): CommandDispatch {
         }
 
         try {
-          // Send SIGTERM
-          agent.proc.kill("SIGTERM");
-
-          // Wait 3 seconds for graceful shutdown
-          await new Promise((resolve) => setTimeout(resolve, 3000));
-
-          // If still running, send SIGKILL
-          if (!agent.proc.killed) {
-            agent.proc.kill("SIGKILL");
+          if (acpClient) {
+            await acpClient.cancel(agent.taskId);
           }
 
           agent.status = "cancelled";
@@ -154,13 +161,22 @@ export function createA2ADispatch(): CommandDispatch {
         const agents = Array.from(activeAgents.values()).map((agent) => ({
           id: agent.id,
           status: agent.status,
-          stdoutLength: agent.stdout.length,
-          stderrLength: agent.stderr.length,
+          taskId: agent.taskId,
         }));
 
         return successResponse(command, {
           agents,
           count: agents.length,
+        });
+      }
+
+      case "agent.status": {
+        const configured = !!acpClient || !!getDefaultAcpConfig().endpoint;
+
+        return successResponse(command, {
+          configured,
+          acpClientInitialized,
+          activeAgentCount: activeAgents.size,
         });
       }
 
