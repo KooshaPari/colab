@@ -482,7 +482,7 @@ describe("createBoundaryDispatcher", () => {
       const dispatchLocal = vi.fn();
       const dispatchTool = vi.fn(async (cmd: LocalBusEnvelope) => {
         // Returns invalid type
-        return { ...cmd, type: "invalid" } as LocalBusEnvelope;
+        return { ...cmd, type: "invalid" } as unknown as LocalBusEnvelope;
       });
 
       const dispatcher = createBoundaryDispatcher({
