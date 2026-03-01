@@ -63,7 +63,7 @@ function toResponse<T extends Record<string, unknown>>(
 
   return {
     ok: true,
-    result: (response.result as T | null) ?? {},
+    result: (response.result as T | null) ?? ({} as T | null),
     error: null,
   };
 }
@@ -180,10 +180,10 @@ export class DesktopRuntimeClient {
     const parsed = toResponse<Record<string, unknown>>(response);
     const activeEngine = parsed.result?.active_engine === "rio" ? "rio" : "ghostty";
     const available = Array.isArray(parsed.result?.available_engines)
-      ? parsed.result.available_engines.filter(
+      ? (parsed.result.available_engines.filter(
           (value): value is RendererEngine => value === "ghostty" || value === "rio",
-        )
-      : ["ghostty", "rio"];
+        ) as RendererEngine[])
+      : (["ghostty", "rio"] as RendererEngine[]);
     return {
       activeEngine,
       availableEngines: available,

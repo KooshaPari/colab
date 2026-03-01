@@ -81,7 +81,7 @@ export function createBusRpcBridge(opts: BusRpcBridgeOptions): BusRpcBridge {
     const muxerDispatch = createMuxerDispatch();
 
     return async (command: LocalBusEnvelope): Promise<LocalBusEnvelope> => {
-      const method = command.method;
+      const method = command.method ?? "";
 
       // Route share.* and zmx.* to tool dispatch
       if (method.startsWith("share.") || method.startsWith("zmx.")) {

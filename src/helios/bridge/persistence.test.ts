@@ -12,6 +12,7 @@ const createMockCollection = () => ({
   insert: vi.fn(),
   update: vi.fn(),
   delete: vi.fn(),
+  remove: vi.fn(),
 });
 
 let mockCollectionInstance: ReturnType<typeof createMockCollection>;
@@ -21,6 +22,7 @@ const createMockCollectionWithRemove = () => ({
   query: vi.fn(),
   insert: vi.fn(),
   update: vi.fn(),
+  delete: vi.fn(),
   remove: vi.fn(),
 });
 
