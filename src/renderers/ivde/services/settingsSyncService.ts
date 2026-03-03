@@ -7,6 +7,34 @@ import { state, setState, updateSyncedAppSettings } from '../store';
 import { encryptSettings, decryptSettings, type EncryptedPayload } from './settingsSyncEncryption';
 import { electrobun } from '../init';
 
+type SyncedTokenRpcRecord = {
+  name: string;
+  url?: string;
+  endpoint: string;
+  token: string;
+};
+
+type PluginInstalledRpcRecord = {
+  name: string;
+  version: string;
+  enabled: boolean;
+};
+
+type TokensRpcResponse = {
+  ok?: boolean;
+  tokens?: SyncedTokenRpcRecord[];
+};
+
+type SettingsSyncRpcRequest = {
+  getTokens?: () => Promise<TokensRpcResponse | undefined>;
+  pluginGetInstalled?: () => Promise<PluginInstalledRpcRecord[] | undefined>;
+  pluginGetSettingsValues?: (args: { pluginName: string }) => Promise<Record<string, unknown> | undefined>;
+  setToken?: (token: SyncedTokenRpcRecord) => Promise<unknown>;
+  pluginInstall?: (args: { packageName: string; version: string }) => Promise<unknown>;
+  pluginSetSettingValue?: (args: { pluginName: string; key: string; value: unknown }) => Promise<unknown>;
+  pluginSetEnabled?: (args: { packageName: string; enabled: boolean }) => Promise<unknown>;
+};
+
 /**
  * Schema for synced settings
  */
@@ -72,6 +100,7 @@ function getApiBaseUrl(): string {
  * Gather all syncable settings from the app
  */
 export async function gatherSyncableSettings(): Promise<SyncedSettings> {
+  const request = electrobun.rpc?.request as SettingsSyncRpcRequest | undefined;
   // Get llama settings
   const llama = {
     enabled: state.appSettings.llama?.enabled,
@@ -94,9 +123,9 @@ export async function gatherSyncableSettings(): Promise<SyncedSettings> {
   // Get API tokens from goldfishdb via RPC
   let tokens: SyncedSettings['tokens'] = [];
   try {
-    const tokensResult = await (electrobun.rpc as any)?.request.getTokens?.();
+    const tokensResult = await request?.getTokens?.();
     if (tokensResult?.ok && Array.isArray(tokensResult.tokens)) {
-      tokens = tokensResult.tokens.map((t: any) => ({
+      tokens = tokensResult.tokens.map((t) => ({
         name: t.name,
         url: t.url,
         endpoint: t.endpoint,
@@ -110,13 +139,13 @@ export async function gatherSyncableSettings(): Promise<SyncedSettings> {
   // Get installed plugins via RPC
   let plugins: SyncedSettings['plugins'] = [];
   try {
-    const pluginsResult = await (electrobun.rpc as any)?.request.pluginGetInstalled?.();
+    const pluginsResult = await request?.pluginGetInstalled?.();
     if (Array.isArray(pluginsResult)) {
       for (const plugin of pluginsResult) {
         // Get plugin settings if any
         let settings: Record<string, unknown> | undefined;
         try {
-          const settingsResult = await (electrobun.rpc as any)?.request.pluginGetSettingsValues?.({ pluginName: plugin.name });
+          const settingsResult = await request?.pluginGetSettingsValues?.({ pluginName: plugin.name });
           if (settingsResult && Object.keys(settingsResult).length > 0) {
             settings = settingsResult;
           }
@@ -150,6 +179,7 @@ export async function gatherSyncableSettings(): Promise<SyncedSettings> {
  * Apply synced settings to the app
  */
 export async function applySyncedSettings(settings: SyncedSettings): Promise<void> {
+  const request = electrobun.rpc?.request as SettingsSyncRpcRequest | undefined;
   // Apply llama settings
   if (settings.llama) {
     setState('appSettings', 'llama', {
@@ -172,7 +202,7 @@ export async function applySyncedSettings(settings: SyncedSettings): Promise<voi
   if (settings.tokens && settings.tokens.length > 0) {
     try {
       for (const token of settings.tokens) {
-        await (electrobun.rpc as any)?.request.setToken?.(token);
+        await request?.setToken?.(token);
       }
     } catch (error) {
       console.warn('Failed to apply tokens:', error);
@@ -184,23 +214,23 @@ export async function applySyncedSettings(settings: SyncedSettings): Promise<voi
     for (const plugin of settings.plugins) {
       try {
         // Check if plugin is already installed
-        const installedPlugins = await (electrobun.rpc as any)?.request.pluginGetInstalled?.();
-        const isInstalled = installedPlugins?.some((p: any) => p.name === plugin.name);
+        const installedPlugins = await request?.pluginGetInstalled?.();
+        const isInstalled = installedPlugins?.some((p) => p.name === plugin.name);
 
         if (!isInstalled) {
           // Install the plugin
-          await (electrobun.rpc as any)?.request.pluginInstall?.({ packageName: plugin.name, version: plugin.version });
+          await request?.pluginInstall?.({ packageName: plugin.name, version: plugin.version });
         }
 
         // Apply plugin settings if any
         if (plugin.settings) {
           for (const [key, value] of Object.entries(plugin.settings)) {
-            await (electrobun.rpc as any)?.request.pluginSetSettingValue?.({ pluginName: plugin.name, key, value });
+            await request?.pluginSetSettingValue?.({ pluginName: plugin.name, key, value });
           }
         }
 
         // Set enabled state
-        await (electrobun.rpc as any)?.request.pluginSetEnabled?.({ packageName: plugin.name, enabled: plugin.enabled });
+        await request?.pluginSetEnabled?.({ packageName: plugin.name, enabled: plugin.enabled });
       } catch (error) {
         console.warn(`Failed to sync plugin ${plugin.name}:`, error);
       }
