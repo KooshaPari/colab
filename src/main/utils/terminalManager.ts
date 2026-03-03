@@ -4,6 +4,7 @@
 import { spawn } from "bun";
 import { randomUUID } from "crypto";
 import path from "path";
+import { parseBuiltinEditCommand } from "./terminalCommandParser";
 
 export interface TerminalSession {
   id: string;
@@ -139,50 +140,7 @@ class TerminalManager {
    * Returns the file path argument if it matches, null otherwise
    */
   private checkEditCommand(commandLine: string): string[] | null {
-    const trimmed = commandLine.trim();
-    // Match 'edit <path>' or 'colab <path>'
-    const editMatch = trimmed.match(/^edit\s+(.+)$/);
-    const colabMatch = trimmed.match(/^colab\s+(.+)$/);
-
-    if (editMatch) {
-      // Parse arguments (handle quoted paths, multiple files, etc.)
-      return this.parseEditArgs(editMatch[1]);
-    }
-    if (colabMatch) {
-      return this.parseEditArgs(colabMatch[1]);
-    }
-    return null;
-  }
-
-  /**
-   * Parse edit command arguments, handling quoted paths
-   */
-  private parseEditArgs(argsString: string): string[] {
-    const args: string[] = [];
-    let current = '';
-    let inQuote = false;
-    let quoteChar = '';
-
-    for (const char of argsString) {
-      if (!inQuote && (char === '"' || char === "'")) {
-        inQuote = true;
-        quoteChar = char;
-      } else if (inQuote && char === quoteChar) {
-        inQuote = false;
-        quoteChar = '';
-      } else if (!inQuote && char === ' ') {
-        if (current) {
-          args.push(current);
-          current = '';
-        }
-      } else {
-        current += char;
-      }
-    }
-    if (current) {
-      args.push(current);
-    }
-    return args;
+    return parseBuiltinEditCommand(commandLine);
   }
 
   createTerminal(cwd: string = process.cwd(), shell?: string, cols: number = 80, rows: number = 24, windowId?: string): string {

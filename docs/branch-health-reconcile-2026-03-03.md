@@ -85,3 +85,33 @@ git push -u origin chore/branch-health-colab-20260303
 
 - Do not use `git reset --hard`, `git push --force`, or history-rewriting operations on shared branches.
 - Keep PR scope small: branch-health sync and task changes should be separate PRs when possible.
+
+## TS Debt Reduction Evidence (2026-03-03)
+
+### Slice 1: `index.tsx` + `GitSlate.tsx`
+
+- Metric: `any`/`as any` hotspots in targeted files.
+- Before:
+  - `src/renderers/ivde/index.tsx`: 6
+  - `src/renderers/ivde/slates/GitSlate.tsx`: 13
+- After:
+  - `src/renderers/ivde/index.tsx`: 3
+  - `src/renderers/ivde/slates/GitSlate.tsx`: 0
+- Net change: 19 -> 3 (84.2% reduction in targeted debt markers).
+
+### Slice 2: local terminal/settings hotspots
+
+- `src/main/utils/terminalManager.ts`
+  - Before: 668 lines
+  - After: 626 lines
+  - Change: -42 lines (parser extraction to `src/main/utils/terminalCommandParser.ts`)
+- `src/renderers/ivde/settings/PluginSettings.tsx`
+  - Before: 629 lines
+  - After: 496 lines
+  - Change: -133 lines (custom loader extraction to `src/renderers/ivde/settings/CustomSettingsLoader.tsx`)
+
+### Typecheck evidence
+
+- Command: `bun run typecheck`
+- Result: fail (existing repo-wide debt outside this focused lane)
+- Captured count: 3,335 `error TS` lines in `/tmp/colab-typecheck-after.log`.

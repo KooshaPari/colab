@@ -1,15 +1,11 @@
 import {
   type JSXElement,
-  type Component,
   createSignal,
   onMount,
-  onCleanup,
   For,
   Show,
   Switch,
   Match,
-  lazy,
-  Suspense,
 } from "solid-js";
 import { state, setState } from "../store";
 import {
@@ -18,136 +14,7 @@ import {
   SettingsPaneField,
 } from "./forms";
 import { electrobun } from "../init";
-
-// Props for custom settings components
-export interface CustomSettingsComponentProps {
-  pluginName: string;
-  sendMessage: (message: unknown) => Promise<void>;
-  onMessage: (callback: (message: unknown) => void) => void;
-  getState: <T = unknown>(key: string) => Promise<T | undefined>;
-  setState: <T = unknown>(key: string, value: T) => Promise<void>;
-}
-
-import { getSettingsComponent } from "../slates/pluginSlateRegistry";
-
-// Load a custom settings component from the plugin registry
-async function loadCustomComponent(name: string): Promise<Component<CustomSettingsComponentProps> | null> {
-  const component = getSettingsComponent(name);
-  if (!component) {
-    console.warn(`Unknown custom settings component: ${name}`);
-    return null;
-  }
-  return component as Component<CustomSettingsComponentProps>;
-}
-
-// Wrapper component that handles lazy loading of custom settings components
-const CustomSettingsLoader = (props: { componentName: string; pluginName: string }): JSXElement => {
-  const [CustomComponent, setCustomComponent] = createSignal<Component<CustomSettingsComponentProps> | null>(null);
-  const [loadError, setLoadError] = createSignal<string | null>(null);
-  const [loadingComponent, setLoadingComponent] = createSignal(true);
-
-  onMount(async () => {
-    try {
-      const component = await loadCustomComponent(props.componentName);
-      if (component) {
-        setCustomComponent(() => component);
-      } else {
-        setLoadError(`Component "${props.componentName}" not found`);
-      }
-    } catch (e) {
-      setLoadError(e instanceof Error ? e.message : 'Failed to load component');
-    } finally {
-      setLoadingComponent(false);
-    }
-  });
-
-  // Create messaging helpers for the custom component
-  const sendMessage = async (message: unknown) => {
-    console.log('[PluginSettings] sendMessage called:', props.pluginName, message);
-    try {
-      await electrobun.rpc?.request.pluginSendSettingsMessage({ pluginName: props.pluginName, message });
-      console.log('[PluginSettings] sendMessage completed');
-    } catch (e) {
-      console.error('[PluginSettings] sendMessage error:', e);
-    }
-  };
-
-  // Message listeners - polling for now
-  const messageListeners: ((message: unknown) => void)[] = [];
-  const onMessage = (callback: (message: unknown) => void) => {
-    messageListeners.push(callback);
-  };
-
-  // Poll for messages
-  let pollInterval: ReturnType<typeof setInterval> | null = null;
-
-  onMount(() => {
-    const pollMessages = async () => {
-      try {
-        const messages = await electrobun.rpc?.request.pluginGetPendingSettingsMessages({ pluginName: props.pluginName });
-        if (messages && messages.length > 0) {
-          for (const msg of messages) {
-            for (const listener of messageListeners) {
-              try {
-                listener(msg);
-              } catch (e) {
-                console.error('Error in message listener:', e);
-              }
-            }
-          }
-        }
-      } catch (e) {
-        console.error('Failed to poll messages:', e);
-      }
-    };
-
-    pollInterval = setInterval(pollMessages, 200);
-  });
-
-  onCleanup(() => {
-    if (pollInterval) {
-      clearInterval(pollInterval);
-    }
-  });
-
-  // State helpers
-  const getStateValue = async <T = unknown,>(key: string): Promise<T | undefined> => {
-    return await electrobun.rpc?.request.pluginGetStateValue({ pluginName: props.pluginName, key }) as T | undefined;
-  };
-
-  const setStateValue = async <T = unknown,>(key: string, value: T): Promise<void> => {
-    await electrobun.rpc?.request.pluginSetStateValue({ pluginName: props.pluginName, key, value });
-  };
-
-  return (
-    <div style="margin-top: 16px; border-top: 1px solid #333; padding-top: 16px;">
-      <Show when={loadingComponent()}>
-        <div style="padding: 16px; text-align: center; color: #888; font-size: 12px;">
-          Loading...
-        </div>
-      </Show>
-      <Show when={loadError()}>
-        <div style="padding: 16px; color: #ff6b6b; font-size: 12px;">
-          Failed to load settings component: {loadError()}
-        </div>
-      </Show>
-      <Show when={!loadingComponent() && !loadError() && CustomComponent()}>
-        {(() => {
-          const Comp = CustomComponent()!;
-          return (
-            <Comp
-              pluginName={props.pluginName}
-              sendMessage={sendMessage}
-              onMessage={onMessage}
-              getState={getStateValue}
-              setState={setStateValue}
-            />
-          );
-        })()}
-      </Show>
-    </div>
-  );
-};
+import { CustomSettingsLoader } from "./CustomSettingsLoader";
 
 interface SettingField {
   key: string;
