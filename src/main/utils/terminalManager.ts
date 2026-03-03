@@ -46,6 +46,20 @@ interface PtyResponse {
   error_msg?: string;
 }
 
+type SpawnStdin = ReturnType<typeof spawn>["stdin"];
+
+const hasWrite = (
+  sink: SpawnStdin
+): sink is Exclude<SpawnStdin, number | undefined> & { write: (chunk: string) => unknown } => {
+  return typeof sink !== "number" && typeof sink?.write === "function";
+};
+
+const hasReader = (
+  stream: number | ReadableStream<Uint8Array> | undefined
+): stream is ReadableStream<Uint8Array> => {
+  return typeof stream !== "number" && typeof stream?.getReader === "function";
+};
+
 // Plugin command handler type
 type PluginCommandChecker = (commandLine: string) => string | null;
 type PluginCommandExecutor = (
@@ -177,7 +191,7 @@ class TerminalManager {
     // Determine shell
     const defaultShell = process.platform === "win32" ? "cmd.exe" :
                         process.platform === "darwin" ? "/bin/zsh" : "/bin/bash";
-    const terminalShell = shell || process.env.SHELL || defaultShell;
+    const terminalShell = shell || process.env["SHELL"] || defaultShell;
 
     // console.log(`Creating PTY terminal ${terminalId} with shell: ${terminalShell}, cwd: ${cwd}, windowId: ${windowId}`);
 
@@ -251,7 +265,12 @@ class TerminalManager {
 
     try {
       const jsonMessage = JSON.stringify(message) + '\n';
-      terminal.process.stdin.write(jsonMessage);
+      const stdin = terminal.process.stdin;
+      if (!hasWrite(stdin)) {
+        console.error(`Terminal ${terminalId} stdin is not writable`);
+        return;
+      }
+      stdin.write(jsonMessage);
     } catch (error) {
       console.error("Error sending PTY message:", error);
     }
@@ -259,6 +278,9 @@ class TerminalManager {
 
   private async readPtyOutput(proc: ReturnType<typeof spawn>, terminalId: string) {
     try {
+      if (!hasReader(proc.stdout) || !hasReader(proc.stderr)) {
+        throw new Error("PTY stdio streams are not readable");
+      }
       const stdoutReader = proc.stdout.getReader();
       const stderrReader = proc.stderr.getReader();
 
