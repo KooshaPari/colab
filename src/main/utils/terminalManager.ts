@@ -1,3 +1,6 @@
+/// <reference lib="dom" />
+/// <reference types="bun-types" />
+
 import { spawn } from "bun";
 import { randomUUID } from "crypto";
 import path from "path";
@@ -216,7 +219,7 @@ class TerminalManager {
     this.readPtyOutput(proc, terminalId);
 
     // Handle process exit
-    proc.exited.then((exitCode) => {
+    proc.exited.then((exitCode: number) => {
       // console.log(`PTY process ${terminalId} exited with code ${exitCode}`);
       const terminal = this.terminals.get(terminalId);
       if (terminal) {
